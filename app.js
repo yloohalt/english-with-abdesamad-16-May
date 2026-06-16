@@ -13,7 +13,24 @@ const state = {
   vocabQuizSelections: {},
   activeVocabQuiz: null,
   storyAudio: null,
-  storyAudioSpeed: 1
+  storyAudioSpeed: 1,
+  
+  // YouGlish Integration State
+  youglishSettings: {
+    accent: localStorage.getItem('yg-accent') || 'us',
+    repeatTarget: localStorage.getItem('yg-repeatTarget') || 'word',
+    repeatCount: parseInt(localStorage.getItem('yg-repeatCount') || '3')
+  },
+  youglishWidget: null,
+  youglishReady: false,
+  youglishActive: false,
+  youglishRepeatCounter: 0,
+  youglishCaptionDuration: 4,
+  youglishCaptionStartTime: 0,
+  youglishWordTimeout: null,
+  youglishCurrentWord: '',
+  youglishTotalTracks: 0,
+  youglishLastTrackNumber: -1
 };
 
 // DOM Elements
@@ -77,6 +94,9 @@ function navigateTo(target) {
 function switchView(viewName) {
   // Pause and reset story audio when navigating away
   resetStoryAudio();
+  
+  // Close word modal (and pause YouGlish)
+  closeWordModal();
   
   // Hide all views
   Object.keys(views).forEach(key => {
@@ -808,7 +828,48 @@ function openKeywordPopup(wordName) {
           <span style="font-size: 1.1rem; color: #a855f7; font-weight: 600;">${arabicTrans}</span>
         </div>
       </div>
-      <button class="modal-close" style="position: static; margin-top: -5px;" onclick="closeWordModal()">&times;</button>
+      <div style="display: flex; gap: 0.8rem; align-items: center;">
+        <button class="word-card-action-btn video-btn" id="word-video-btn" onclick="toggleYouGlishPlayer('${v.word.replace(/'/g, "\\'")}')" title="Watch Pronunciation Video">
+          <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        </button>
+        <button class="word-card-action-btn settings-btn" id="word-settings-btn" onclick="toggleYouGlishSettings()" title="YouGlish Settings">
+          <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <button class="modal-close" style="position: static; margin-top: 0;" onclick="closeWordModal()">&times;</button>
+      </div>
+    </div>
+    
+    <!-- YouGlish Settings Panel -->
+    <div class="youglish-settings-panel" id="yg-settings-panel" style="display: none;">
+      <h4>YouGlish Looping Settings</h4>
+      <div class="yg-settings-grid">
+        <div class="yg-setting-row">
+          <label for="yg-accent">Accent:</label>
+          <select id="yg-accent" onchange="updateYouGlishSetting('accent', this.value)">
+            <option value="all">All English</option>
+            <option value="us">US (Default)</option>
+            <option value="uk">UK</option>
+            <option value="aus">AUS</option>
+          </select>
+        </div>
+        <div class="yg-setting-row">
+          <label>Repeat:</label>
+          <div class="yg-setting-radios">
+            <label><input type="radio" name="yg-repeat-target" value="word" onchange="updateYouGlishSetting('repeatTarget', this.value)"> Just Word</label>
+            <label><input type="radio" name="yg-repeat-target" value="sentence" onchange="updateYouGlishSetting('repeatTarget', this.value)"> Sentence</label>
+          </div>
+        </div>
+        <div class="yg-setting-row">
+          <label for="yg-repeat-count">Count:</label>
+          <select id="yg-repeat-count" onchange="updateYouGlishSetting('repeatCount', this.value)">
+            <option value="1">1 time</option>
+            <option value="2">2 times</option>
+            <option value="3">3 times (Default)</option>
+            <option value="5">5 times</option>
+            <option value="10">10 times</option>
+          </select>
+        </div>
+      </div>
     </div>
     
     <div class="word-card-pronounce">
@@ -825,6 +886,18 @@ function openKeywordPopup(wordName) {
     <div>
       <div class="word-card-section-title">Example Sentence</div>
       <div class="word-card-ex">"${v.ex}"</div>
+    </div>
+    
+    <!-- Dedicated YouGlish Section (Toggled via JS) -->
+    <div id="yg-section-wrapper" style="display: none;">
+      <div class="word-card-section-title">Pronunciation Video</div>
+      <div class="youglish-player-container" id="yg-player-container">
+        <div id="yg-widget-element"></div>
+        <div class="yg-loader" id="yg-loader">
+          <div class="spinner"></div>
+          <span>Loading pronunciation video...</span>
+        </div>
+      </div>
     </div>
     
     <div>
@@ -846,6 +919,272 @@ function openKeywordPopup(wordName) {
 function closeWordModal() {
   const modal = document.getElementById('word-modal');
   if (modal) modal.classList.remove('active');
+  pauseYouGlish();
+}
+
+// --- YouGlish Player Controller and Lifecycle Handlers ---
+
+window.onYouglishAPIReady = function() {
+  state.youglishReady = true;
+  console.log("YouGlish API loaded and ready.");
+};
+
+function toggleYouGlishPlayer(word) {
+  const wrapper = document.getElementById('yg-section-wrapper');
+  const videoBtn = document.getElementById('word-video-btn');
+  
+  if (!wrapper) return;
+  
+  const isPlaying = wrapper.style.display !== 'none';
+  if (isPlaying) {
+    pauseYouGlish();
+    wrapper.style.display = 'none';
+    if (videoBtn) videoBtn.classList.remove('active');
+    state.youglishActive = false;
+  } else {
+    wrapper.style.display = 'block';
+    if (videoBtn) videoBtn.classList.add('active');
+    state.youglishActive = true;
+    
+    // Pause general lesson story audio
+    resetStoryAudio();
+    
+    // Load video
+    loadYouGlish(word);
+  }
+}
+
+function toggleYouGlishSettings() {
+  const panel = document.getElementById('yg-settings-panel');
+  const settingsBtn = document.getElementById('word-settings-btn');
+  if (!panel) return;
+  
+  const isOpen = panel.style.display !== 'none';
+  if (isOpen) {
+    panel.style.display = 'none';
+    if (settingsBtn) settingsBtn.classList.remove('active');
+  } else {
+    panel.style.display = 'block';
+    if (settingsBtn) settingsBtn.classList.add('active');
+    
+    // Sync current values
+    document.getElementById('yg-accent').value = state.youglishSettings.accent;
+    document.getElementById('yg-repeat-count').value = state.youglishSettings.repeatCount;
+    
+    const radios = document.getElementsByName('yg-repeat-target');
+    radios.forEach(radio => {
+      radio.checked = (radio.value === state.youglishSettings.repeatTarget);
+    });
+  }
+}
+
+function updateYouGlishSetting(key, value) {
+  state.youglishSettings[key] = key === 'repeatCount' ? parseInt(value) : value;
+  localStorage.setItem(`yg-${key}`, value);
+  
+  // Refresh player if active
+  if (state.youglishActive && state.youglishCurrentWord) {
+    if (key === 'accent') {
+      loadYouGlish(state.youglishCurrentWord);
+    }
+  }
+}
+
+function loadYouGlish(word) {
+  state.youglishCurrentWord = word;
+  
+  const loader = document.getElementById('yg-loader');
+  const widgetEl = document.getElementById('yg-widget-element');
+  if (loader) {
+    loader.style.display = 'flex';
+    loader.innerHTML = '<div class="spinner"></div><span>Loading pronunciation video...</span>';
+  }
+  if (widgetEl) widgetEl.style.display = 'none';
+  
+  clearYouGlishTimers();
+  
+  state.youglishRepeatCounter = 0;
+  state.youglishLastTrackNumber = -1;
+  
+  // Re-verify YG loaded state
+  if (typeof YG === 'undefined') {
+    setTimeout(() => loadYouGlish(word), 400);
+    return;
+  }
+  
+  const accent = state.youglishSettings.accent === 'all' ? '' : state.youglishSettings.accent;
+  const colors = getYouglishThemeColors();
+  
+  // Fallback timer to hide loader if browser blocks API callback events
+  state.youglishFallbackTimeout = setTimeout(() => {
+    console.log("YouGlish load fallback triggered (likely due to file:// origin sandbox).");
+    const fallLoader = document.getElementById('yg-loader');
+    const fallWidget = document.getElementById('yg-widget-element');
+    if (fallLoader && fallLoader.style.display !== 'none') {
+      fallLoader.style.display = 'none';
+    }
+    if (fallWidget) {
+      fallWidget.style.display = 'block';
+    }
+  }, 3500);
+  
+  try {
+    // Re-instantiate widget because container was replaced dynamically
+    // Use components: 88 (shows player + captions + speed controls + control buttons; hides search and title)
+    // Omit width property so it defaults to "expand to all its container width" responsively
+    state.youglishWidget = new YG.Widget("yg-widget-element", {
+      components: 88,
+      backgroundColor: colors.backgroundColor,
+      linkColor: colors.linkColor,
+      titleColor: colors.titleColor,
+      captionColor: colors.captionColor,
+      markerColor: colors.markerColor,
+      textColor: colors.textColor,
+      queryColor: colors.queryColor,
+      autoStart: 1,
+      events: {
+        'onFetchDone': onYouglishFetchDone,
+        'onVideoChange': onYouglishVideoChange,
+        'onCaptionChange': onYouglishCaptionChange,
+        'onCaptionConsumed': onYouglishCaptionConsumed
+      }
+    });
+    
+    state.youglishWidget.fetch(word, "english", accent);
+  } catch (err) {
+    console.error("YouGlish init error:", err);
+    if (loader) {
+      loader.innerHTML = `<span style="color: #ef4444;">Error loading video. Please try again.</span>`;
+    }
+  }
+}
+
+function getYouglishThemeColors() {
+  const isDark = document.body.classList.contains('dark-mode');
+  if (isDark) {
+    return {
+      backgroundColor: "#1c0d2e",
+      textColor: "#cbd5e1",
+      captionColor: "#a855f7",
+      markerColor: "rgba(168, 85, 247, 0.15)",
+      queryColor: "#f8fafc",
+      linkColor: "#a855f7",
+      titleColor: "#cbd5e1"
+    };
+  } else {
+    return {
+      backgroundColor: "#ffffff",
+      textColor: "#475569",
+      captionColor: "#0284c7",
+      markerColor: "rgba(2, 132, 199, 0.15)",
+      queryColor: "#0f172a",
+      linkColor: "#0284c7",
+      titleColor: "#475569"
+    };
+  }
+}
+
+function onYouglishFetchDone(event) {
+  if (state.youglishFallbackTimeout) {
+    clearTimeout(state.youglishFallbackTimeout);
+    state.youglishFallbackTimeout = null;
+  }
+
+  const loader = document.getElementById('yg-loader');
+  const widgetEl = document.getElementById('yg-widget-element');
+  
+  if (event.totalResult === 0) {
+    if (loader) {
+      loader.style.display = 'flex';
+      loader.innerHTML = `<span style="color: #ef4444; font-size: 0.9rem; text-align: center; padding: 1rem;">No YouGlish videos found for "${state.youglishCurrentWord}" with accent "${state.youglishSettings.accent.toUpperCase()}".</span>`;
+    }
+    if (widgetEl) widgetEl.style.display = 'none';
+  } else {
+    if (loader) loader.style.display = 'none';
+    if (widgetEl) widgetEl.style.display = 'block';
+    state.youglishTotalTracks = event.totalResult;
+  }
+}
+
+function onYouglishVideoChange(event) {
+  state.youglishRepeatCounter = 0;
+  state.youglishLastTrackNumber = event.trackNumber;
+  clearYouGlishTimers();
+}
+
+function onYouglishCaptionChange(event) {
+  clearYouGlishTimers();
+  
+  const caption = event.caption || '';
+  if (state.youglishSettings.repeatTarget === 'word' && caption.includes('[[[')) {
+    const idxStart = caption.indexOf('[[[');
+    const idxEnd = caption.indexOf(']]]');
+    const textBefore = caption.substring(0, idxStart);
+    const targetText = caption.substring(idxStart + 3, idxEnd);
+    const cleanCaption = caption.replace(/\[\[\[/g, '').replace(/\]\]\]/g, '');
+    const totalLen = cleanCaption.length;
+    
+    const endPercent = (textBefore.length + targetText.length) / totalLen;
+    
+    // Estimate segment duration in seconds (average 15 characters per second)
+    const estDuration = Math.max(2, Math.min(6, totalLen / 15));
+    
+    // End of the word in milliseconds, plus a small buffer of 0.4s to ensure it's fully pronounced
+    const endMs = Math.min(estDuration * 1000, (estDuration * endPercent + 0.4) * 1000);
+    
+    // Let the video play naturally from the start of the caption segment.
+    // When the end of the word is reached, trigger the replay/next track loop.
+    state.youglishWordTimeout = setTimeout(() => {
+      if (!state.youglishActive || !state.youglishWidget) return;
+      
+      state.youglishRepeatCounter++;
+      if (state.youglishRepeatCounter < state.youglishSettings.repeatCount) {
+        state.youglishWidget.replay();
+      } else {
+        if (state.youglishLastTrackNumber < state.youglishTotalTracks) {
+          state.youglishWidget.next();
+        }
+      }
+    }, endMs);
+  }
+}
+
+function onYouglishCaptionConsumed(event) {
+  // If we are currently running a word loop timer, ignore caption consumed
+  if (state.youglishSettings.repeatTarget === 'word' && state.youglishWordTimeout) return;
+  
+  if (!state.youglishActive || !state.youglishWidget) return;
+  
+  state.youglishRepeatCounter++;
+  if (state.youglishRepeatCounter < state.youglishSettings.repeatCount) {
+    state.youglishWidget.replay();
+  } else {
+    if (state.youglishLastTrackNumber < state.youglishTotalTracks) {
+      state.youglishWidget.next();
+    }
+  }
+}
+
+function clearYouGlishTimers() {
+  if (state.youglishWordTimeout) {
+    clearTimeout(state.youglishWordTimeout);
+    state.youglishWordTimeout = null;
+  }
+  if (state.youglishFallbackTimeout) {
+    clearTimeout(state.youglishFallbackTimeout);
+    state.youglishFallbackTimeout = null;
+  }
+}
+
+function pauseYouGlish() {
+  clearYouGlishTimers();
+  if (state.youglishWidget) {
+    try {
+      state.youglishWidget.pause();
+    } catch (e) {
+      console.log("Could not pause YouGlish widget:", e);
+    }
+  }
 }
 
 // --- 9. STORY AUDIO PLAYER CONTROLLER ---

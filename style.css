@@ -1201,6 +1201,8 @@ body.dark-mode .story-keyword:hover {
   flex-direction: column;
   gap: 1.2rem;
   position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .word-card-header {
@@ -1403,4 +1405,176 @@ body.dark-mode .story-keyword:hover {
 body.dark-mode .story-sentence.active-sentence {
   background-color: rgba(168, 85, 247, 0.28) !important;
   box-shadow: 0 0 12px rgba(168, 85, 247, 0.2);
+}
+
+/* --- YouGlish Widget Integration & Settings CSS overrides --- */
+.word-card-action-btn {
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--text-secondary);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.word-card-action-btn:hover {
+  background: rgba(168, 85, 247, 0.1);
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+  transform: scale(1.08);
+}
+
+.word-card-action-btn.active {
+  background: var(--accent-color);
+  color: #ffffff;
+  border-color: var(--accent-color);
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
+}
+
+.action-icon {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+}
+
+/* YouGlish Settings Panel styling */
+.youglish-settings-panel {
+  background: rgba(14, 165, 233, 0.03);
+  border: 1px dashed var(--card-border);
+  border-radius: 16px;
+  padding: 1.2rem;
+  margin-top: 0.2rem;
+  animation: ygSlideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.youglish-settings-panel h4 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent-color);
+  margin: 0 0 0.8rem 0;
+  letter-spacing: 0.3px;
+}
+
+.yg-settings-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.8rem;
+}
+
+.yg-setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.yg-setting-row label {
+  font-weight: 550;
+}
+
+.yg-setting-row select {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text-primary);
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.yg-setting-row select:hover,
+.yg-setting-row select:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.15);
+}
+
+.yg-setting-radios {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.yg-setting-radios label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.yg-setting-radios input[type="radio"] {
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
+/* YouGlish player container */
+.youglish-player-container {
+  width: 100%;
+  height: 360px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  position: relative;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.youglish-player-container iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+}
+
+.yg-loader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  z-index: 5;
+  padding: 1rem;
+}
+
+.yg-loader .spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(168, 85, 247, 0.1);
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  animation: ygSpin 1s linear infinite;
+}
+
+@keyframes ygSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ygSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
