@@ -1083,7 +1083,7 @@ function loadYouGlish(word) {
   // Get active player container sizing to pass to YouGlish (prevents iframe internal layout cut-offs)
   const container = document.getElementById('yg-player-container');
   const width = container && container.clientWidth > 0 ? container.clientWidth : (window.innerWidth <= 480 ? 320 : 500);
-  const height = container && container.clientHeight > 0 ? container.clientHeight : 360;
+  const height = container && container.clientHeight > 0 ? container.clientHeight : 230;
   
   // Fallback timer to hide loader if browser blocks API callback events
   state.youglishFallbackTimeout = setTimeout(() => {
@@ -1100,11 +1100,11 @@ function loadYouGlish(word) {
   
   try {
     // Re-instantiate widget because container was replaced dynamically
-    // Use components: 0 (renders only the video player inside the iframe)
+    // Use components: 1024 (renders only the video player inside the iframe, hiding search, title, accent and captions)
     state.youglishWidget = new YG.Widget("yg-widget-element", {
       width: width,
       height: height,
-      components: 0,
+      components: 1024,
       backgroundColor: colors.backgroundColor,
       linkColor: colors.linkColor,
       titleColor: colors.titleColor,

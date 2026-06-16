@@ -1521,31 +1521,31 @@ body.dark-mode .story-sentence.active-sentence {
 /* YouGlish player container */
 .youglish-player-container {
   width: 100%;
-  height: 250px;
+  height: 230px;
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid var(--card-border);
-  background: #f1f5f9; /* Slate 100 - premium soft slate grey for light mode */
+  background: #000000; /* Pure black to blend video aspect ratio borders */
   position: relative;
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
 }
 
 body.dark-mode .youglish-player-container {
-  background: #0f081d; /* Solid dark violet */
+  background: #000000;
 }
 
 body[data-theme="emerald"] .youglish-player-container {
-  background: #011c16; /* Deep dark emerald */
+  background: #000000;
 }
 
 body[data-theme="gold"] .youglish-player-container {
-  background: #121214; /* Deep dark charcoal */
+  background: #000000;
 }
 
 @media (max-width: 480px) {
   .youglish-player-container {
-    height: 180px;
+    height: 145px;
   }
 }
 
@@ -1571,8 +1571,8 @@ body[data-theme="gold"] .youglish-player-container {
   align-items: center;
   justify-content: center;
   gap: 0.8rem;
-  background: inherit; /* Inherit the theme-matched container background */
-  color: var(--text-secondary);
+  background: inherit; /* Inherit the black container background */
+  color: #cbd5e1; /* Light color for readability on black background */
   font-size: 0.9rem;
   z-index: 5;
   padding: 1rem;
