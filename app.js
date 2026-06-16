@@ -841,7 +841,7 @@ function openKeywordPopup(wordName) {
   const cardContent = modal.querySelector('.word-card');
   if (!cardContent) return;
   
-  const syllables = v.syllables || v.stress || v.word;
+  const syllables = v.stress || v.syllables || v.word;
   const ipa = v.ipa || '/.../';
 
   cardContent.innerHTML = `

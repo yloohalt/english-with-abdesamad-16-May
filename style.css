@@ -653,12 +653,17 @@ body.dark-mode .level-card.active-level:hover {
   transform: translateX(-50%) translateY(4px);
   background: var(--accent-color);
   color: #fff;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  padding: 0.35rem 0.75rem;
+  font-family: 'Noto Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif;
+  padding: 0.4rem 0.9rem;
   border-radius: 8px;
-  white-space: nowrap;
+  white-space: normal;
+  min-width: 160px;
+  max-width: 280px;
   direction: rtl;
+  text-align: right;
+  line-height: 1.6;
   z-index: 100;
   transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
   box-shadow: 0 4px 12px rgba(168, 85, 247, 0.35);
@@ -700,18 +705,20 @@ body.dark-mode .level-card.active-level:hover {
   transform: translateX(-50%) translateY(4px);
   background: var(--accent-color);
   color: #fff;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  padding: 0.35rem 0.75rem;
+  font-family: 'Noto Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif;
+  padding: 0.4rem 0.9rem;
   border-radius: 8px;
-  white-space: nowrap;
+  white-space: normal;
+  min-width: 200px;
+  max-width: 320px;
   direction: rtl;
+  text-align: right;
+  line-height: 1.6;
   z-index: 200;
   transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
   box-shadow: 0 4px 12px rgba(168, 85, 247, 0.35);
-  max-width: 280px;
-  white-space: normal;
-  text-align: right;
 }
 
 .word-card-ar-hover .ar-tip::after {
