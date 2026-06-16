@@ -1047,8 +1047,8 @@ function loadYouGlish(word) {
   
   // Get active player container sizing to pass to YouGlish (prevents iframe internal layout cut-offs)
   const container = document.getElementById('yg-player-container');
-  const width = container ? container.clientWidth : (window.innerWidth <= 480 ? 320 : 500);
-  const height = container ? container.clientHeight : (window.innerWidth <= 480 ? 265 : 315);
+  const width = container && container.clientWidth > 0 ? container.clientWidth : (window.innerWidth <= 480 ? 320 : 500);
+  const height = container && container.clientHeight > 0 ? container.clientHeight : 360;
   
   // Fallback timer to hide loader if browser blocks API callback events
   state.youglishFallbackTimeout = setTimeout(() => {
@@ -1186,7 +1186,7 @@ function onYouglishCaptionChange(event) {
         .replace(/\]\]\]/g, '</mark>');
     }
     captionEl.innerHTML = formattedCaption;
-    captionEl.style.display = 'flex';
+    captionEl.style.display = 'block';
   }
   
   if (state.youglishSettings.repeatTarget === 'word' && caption.includes('[[[')) {
