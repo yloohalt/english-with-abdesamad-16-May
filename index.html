@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>English with Abdesamad | Premium English Learning Platform</title>
+  <meta name="description" content="Master English from basics to C2 advanced levels with Abdesamad Tahiri, a Moroccan online teacher offering premium, distraction-free courses.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Header Navigation -->
+  <header>
+    <div class="nav-container">
+      <a href="#home" class="logo">English with Abdesamad</a>
+      <div class="controls">
+        <!-- Palette theme picker -->
+        <select id="theme-select" class="theme-select" aria-label="Select color theme">
+          <option value="default">Light Blue Gradient</option>
+          <option value="purple">Dark Purple (Close to Black)</option>
+          <option value="emerald">Forest Emerald</option>
+          <option value="gold">Charcoal Gold</option>
+        </select>
+        <!-- Simple toggle switch for quick light/dark mode -->
+        <button id="theme-toggle" class="theme-toggle-btn" title="Toggle Light/Dark Mode" aria-label="Toggle Light/Dark Mode">🌓</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Views Container -->
+  <main>
+
+    <!-- 1. Home / Dashboard View -->
+    <div id="home-view" class="view-container active">
+      <!-- Hero Header -->
+      <section class="hero scroll-animate">
+        <h1>Master English, <br>Unlock Your Future.</h1>
+        <p>A premium, distraction-free learning experience tailored for ambitious students. Dive into our curriculum and elevate your language skills from basics to native-like proficiency.</p>
+      </section>
+
+      <!-- Teacher Profile Card -->
+      <section class="teacher-profile scroll-animate">
+        <div class="teacher-avatar-container">
+          <span class="teacher-avatar-text">AT</span>
+        </div>
+        <div class="teacher-info">
+          <span class="badge">Online Instructor</span>
+          <h2>Abdesamad Tahiri</h2>
+          <h3>Moroccan Online English Teacher • BA in English Studies</h3>
+          <p>Hi there! I am Abdesamad, a professional online tutor specializing in English basics and intermediate levels. With my academic background and fastidious approach to teaching, I design structured lessons that cut through the noise, helping you communicate fluently, naturally, and confidently in any professional or academic setting.</p>
+          <button class="cta-button" onclick="openEnrollModal()">
+            Enroll in My Classes
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- Levels Section -->
+      <section class="levels-section scroll-animate">
+        <div class="levels-header">
+          <h2>Your Pathway to Fluency</h2>
+          <p>Choose a level card below to explore its structured lessons. Currently, C1 Advanced level is fully active.</p>
+        </div>
+
+        <div class="levels-grid">
+          <!-- A1 Card -->
+          <div class="level-card locked" data-level="a1">
+            <div class="level-header">
+              <span class="level-code">A1</span>
+              <span class="level-badge">Beginner</span>
+            </div>
+            <h3>English Basics I</h3>
+            <p>Master basic introductions, alphabet, spelling, simple questions, and primary verb tenses in everyday situations.</p>
+            <div class="level-status">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              Coming Soon
+            </div>
+          </div>
+
+          <!-- A2 Card -->
+          <div class="level-card locked" data-level="a2">
+            <div class="level-header">
+              <span class="level-code">A2</span>
+              <span class="level-badge">Elementary</span>
+            </div>
+            <h3>English Basics II</h3>
+            <p>Expand vocabulary to include routine interactions, shopping, directions, past simple narratives, and describing work.</p>
+            <div class="level-status">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              Coming Soon
+            </div>
+          </div>
+
+          <!-- B1 Card -->
+          <div class="level-card locked" data-level="b1">
+            <div class="level-header">
+              <span class="level-code">B1</span>
+              <span class="level-badge">Intermediate</span>
+            </div>
+            <h3>Intermediate Core I</h3>
+            <p>Develop fluency to discuss personal interests, travel planning, work responsibilities, and write coherent paragraphs.</p>
+            <div class="level-status">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              Coming Soon
+            </div>
+          </div>
+
+          <!-- B2 Card -->
+          <div class="level-card locked" data-level="b2">
+            <div class="level-header">
+              <span class="level-code">B2</span>
+              <span class="level-badge">Upper-Intermediate</span>
+            </div>
+            <h3>Intermediate Core II</h3>
+            <p>Engage in debates, understand complex texts on concrete and abstract topics, and explain detailed viewpoints.</p>
+            <div class="level-status">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              Coming Soon
+            </div>
+          </div>
+
+          <!-- C1 Card (ACTIVE) -->
+          <div class="level-card active-level" data-level="c1">
+            <div class="level-header">
+              <span class="level-code">C1</span>
+              <span class="level-badge" style="background: rgba(168,85,247,0.15); color: var(--accent-color);">Advanced</span>
+            </div>
+            <h3>Advanced Proficiency</h3>
+            <p>Master sophisticated grammatical structures, advanced C1/C2 vocabulary, descriptive rhetoric, and academic nuances.</p>
+            <div class="level-status">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke="currentColor" style="stroke: var(--accent-color);"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+              10 Modules Active
+            </div>
+          </div>
+
+          <!-- C2 Card -->
+          <div class="level-card locked" data-level="c2">
+            <div class="level-header">
+              <span class="level-code">C2</span>
+              <span class="level-badge">Mastery</span>
+            </div>
+            <h3>Native-Like Command</h3>
+            <p>Acquire subtle idiomatic command, effortless conversation skills, executive proposal writing, and complex debates.</p>
+            <div class="level-status">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              Coming Soon
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 2. Level Modules View -->
+    <div id="level-view" class="view-container">
+      <div class="view-header">
+        <div>
+          <h2 id="level-title">Level C1: Advanced Modules</h2>
+          <p id="level-desc">Click any card below to open its specific C1 lessons and quizzes.</p>
+        </div>
+        <button class="back-btn" onclick="navigateTo('home')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          Back to Dashboard
+        </button>
+      </div>
+
+      <div id="modules-grid" class="modules-grid">
+        <!-- Rendered dynamically by JavaScript -->
+      </div>
+    </div>
+
+    <!-- 3. Lesson Player View -->
+    <div id="lesson-view" class="view-container">
+      <div class="view-header">
+        <div>
+          <h2 id="lesson-module-title">Module Title</h2>
+          <p id="lesson-module-subtitle">C1 Level Curriculum</p>
+        </div>
+        <button class="back-btn" onclick="navigateTo('level')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          Back to Modules
+        </button>
+      </div>
+
+      <div class="lesson-layout">
+        <!-- Top Navigation Tab Bar -->
+        <nav class="tab-nav">
+          <button class="tab-btn active" onclick="switchLessonTab('vocab')">
+            <span>📚</span> Vocabulary
+          </button>
+          <button class="tab-btn" onclick="switchLessonTab('story')">
+            <span>📖</span> Story Integration
+          </button>
+          <button class="tab-btn" onclick="switchLessonTab('grammar')">
+            <span>⚖️</span> Grammar Lesson
+          </button>
+          <button class="tab-btn" onclick="switchLessonTab('quiz')">
+            <span>✏️</span> Interactive Quiz
+          </button>
+        </nav>
+
+        <!-- Full Width Content Panel -->
+        <section class="lesson-content">
+          <!-- Vocabulary Tab -->
+          <div id="vocab-panel" class="tab-panel active">
+            <h2>C1 Vocabulary List</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Learn the pronunciation, stress, definitions, and collocations of the target vocabulary.</p>
+            <div id="vocab-list-container" class="vocab-list">
+              <!-- Populated by JavaScript -->
+            </div>
+            
+            <div id="vocab-quiz-section" style="margin-top: 3.5rem; border-top: 1px solid var(--card-border); padding-top: 2.5rem;">
+              <h3 style="margin-bottom: 0.5rem; color: var(--accent-color);">🧠 Vocabulary Practice Quiz</h3>
+              <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1.5rem;">Test your knowledge of the vocabulary words from this module. Tap an option to see if you are correct.</p>
+              <div id="vocab-quiz-container" class="quiz-container">
+                <!-- Populated by JavaScript -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Story Tab -->
+          <div id="story-panel" class="tab-panel">
+            <h2>Thematic Story</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Observe how the target vocabulary words are used naturally in an advanced, descriptive context.</p>
+            <div id="story-container" class="story-wrapper">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+
+          <!-- Grammar Tab -->
+          <div id="grammar-panel" class="tab-panel">
+            <h2>Grammar Analysis</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Master the structures, formulas, and rules required for high-scoring C1 English.</p>
+            <div id="grammar-container">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+
+          <!-- Quiz Tab -->
+          <div id="quiz-panel" class="tab-panel">
+            <h2>Interactive Quiz</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Test your understanding of the vocabulary and grammar rules introduced in this module.</p>
+            <div id="quiz-container" class="quiz-container">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Enroll Modal -->
+  <div id="enroll-modal" class="modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeEnrollModal()">&times;</button>
+      <h2>Start Learning English</h2>
+      <p>Fill out the form below to enroll in Abdesamad's private or group online English courses. We will reach out to you within 24 hours.</p>
+      
+      <form id="enroll-form" onsubmit="handleEnrollSubmit(event)">
+        <div class="form-group">
+          <label for="student-name">Your Full Name</label>
+          <input type="text" id="student-name" required placeholder="e.g. Reda Alami">
+        </div>
+        <div class="form-group">
+          <label for="student-email">Email Address</label>
+          <input type="email" id="student-email" required placeholder="e.g. reda@gmail.com">
+        </div>
+        <div class="form-group">
+          <label for="student-level">Target Level Interest</label>
+          <input type="text" id="student-level" placeholder="e.g. Basics (A1/A2) or C1 Intermediate">
+        </div>
+        <div class="form-group">
+          <label for="student-message">Message/Objectives</label>
+          <textarea id="student-message" rows="3" placeholder="Tell Abdesamad about your goals..."></textarea>
+        </div>
+        <button type="submit" class="submit-btn">Send Inquiry</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Word Popup Modal -->
+  <div id="word-modal" class="modal" onclick="closeWordModal()">
+    <div class="modal-content word-card" onclick="event.stopPropagation()">
+      <!-- Populated dynamically by JS -->
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2026 English with Abdesamad. Designed with ❤️ for English Learners. All rights reserved.</p>
+  </footer>
+
+  <!-- Code Script imports -->
+  <script src="modules-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
