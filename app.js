@@ -31,7 +31,8 @@ const state = {
   youglishWordTimeout: null,
   youglishCurrentWord: '',
   youglishTotalTracks: 0,
-  youglishLastTrackNumber: -1
+  youglishLastTrackNumber: -1,
+  youglishPlaying: false
 };
 
 // DOM Elements
@@ -904,6 +905,37 @@ function openKeywordPopup(wordName) {
           <span>Loading pronunciation video...</span>
         </div>
       </div>
+      
+      <!-- Custom Premium YouGlish Controls -->
+      <div class="yg-custom-controls" id="yg-controls-container">
+        <div class="yg-control-left">
+          <span id="yg-track-info">Clip 0 of 0</span>
+        </div>
+        <div class="yg-control-center">
+          <button class="yg-ctrl-btn" onclick="previousYouGlishVideo()" title="Previous Clip">
+            <svg class="ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+          </button>
+          <button class="yg-ctrl-btn play-pause-btn" id="yg-play-pause-btn" onclick="toggleYouGlishPlayPause()" title="Play/Pause">
+            <svg class="ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          </button>
+          <button class="yg-ctrl-btn" onclick="replayYouGlishVideo()" title="Replay Clip">
+            <svg class="ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          </button>
+          <button class="yg-ctrl-btn" onclick="nextYouGlishVideo()" title="Next Clip">
+            <svg class="ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+          </button>
+        </div>
+        <div class="yg-control-right">
+          <select id="yg-speed-select" onchange="changeYouGlishSpeed(this.value)">
+            <option value="0.5">0.5x</option>
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1.0x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+          </select>
+        </div>
+      </div>
+      
       <div class="yg-custom-caption-container" id="yg-custom-caption" style="display: none;"></div>
     </div>
     
@@ -1024,6 +1056,9 @@ function loadYouGlish(word) {
   }
   if (widgetEl) widgetEl.style.display = 'none';
   
+  const controlsEl = document.getElementById('yg-controls-container');
+  if (controlsEl) controlsEl.style.display = 'none';
+  
   // Clear custom caption container when loading a new search
   const captionEl = document.getElementById('yg-custom-caption');
   if (captionEl) {
@@ -1065,11 +1100,11 @@ function loadYouGlish(word) {
   
   try {
     // Re-instantiate widget because container was replaced dynamically
-    // Use components: 80 (shows player + speed controls + control buttons; hides native caption, search box and title)
+    // Use components: 0 (renders only the video player inside the iframe)
     state.youglishWidget = new YG.Widget("yg-widget-element", {
       width: width,
       height: height,
-      components: 80,
+      components: 0,
       backgroundColor: colors.backgroundColor,
       linkColor: colors.linkColor,
       titleColor: colors.titleColor,
@@ -1150,6 +1185,7 @@ function onYouglishFetchDone(event) {
 
   const loader = document.getElementById('yg-loader');
   const widgetEl = document.getElementById('yg-widget-element');
+  const controlsEl = document.getElementById('yg-controls-container');
   
   if (event.totalResult === 0) {
     if (loader) {
@@ -1157,17 +1193,28 @@ function onYouglishFetchDone(event) {
       loader.innerHTML = `<span style="color: #ef4444; font-size: 0.9rem; text-align: center; padding: 1rem;">No YouGlish videos found for "${state.youglishCurrentWord}" with accent "${state.youglishSettings.accent.toUpperCase()}".</span>`;
     }
     if (widgetEl) widgetEl.style.display = 'none';
+    if (controlsEl) controlsEl.style.display = 'none';
   } else {
     if (loader) loader.style.display = 'none';
     if (widgetEl) widgetEl.style.display = 'block';
+    if (controlsEl) controlsEl.style.display = 'flex';
     state.youglishTotalTracks = event.totalResult;
+    updateYouGlishTrackInfo();
   }
 }
 
 function onYouglishVideoChange(event) {
   state.youglishRepeatCounter = 0;
   state.youglishLastTrackNumber = event.trackNumber;
+  state.youglishPlaying = true;
   clearYouGlishTimers();
+  updateYouGlishTrackInfo();
+  
+  // Sync custom play/pause button (show pause bars when video starts playing)
+  const btn = document.getElementById('yg-play-pause-btn');
+  if (btn) {
+    btn.innerHTML = `<svg class="ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
+  }
 }
 
 function onYouglishCaptionChange(event) {
@@ -1257,6 +1304,79 @@ function pauseYouGlish() {
     } catch (e) {
       console.log("Could not pause YouGlish widget:", e);
     }
+  }
+}
+
+// --- Custom Premium YouGlish Control Handlers ---
+
+function previousYouGlishVideo() {
+  if (state.youglishWidget) {
+    try {
+      state.youglishWidget.previous();
+    } catch (e) {
+      console.error("YouGlish previous failed:", e);
+    }
+  }
+}
+
+function nextYouGlishVideo() {
+  if (state.youglishWidget) {
+    try {
+      state.youglishWidget.next();
+    } catch (e) {
+      console.error("YouGlish next failed:", e);
+    }
+  }
+}
+
+function replayYouGlishVideo() {
+  if (state.youglishWidget) {
+    try {
+      state.youglishWidget.replay();
+    } catch (e) {
+      console.error("YouGlish replay failed:", e);
+    }
+  }
+}
+
+function changeYouGlishSpeed(speed) {
+  if (state.youglishWidget) {
+    try {
+      state.youglishWidget.setSpeed(parseFloat(speed));
+    } catch (e) {
+      console.error("YouGlish setSpeed failed:", e);
+    }
+  }
+}
+
+function toggleYouGlishPlayPause() {
+  if (!state.youglishWidget) return;
+  const btn = document.getElementById('yg-play-pause-btn');
+  try {
+    if (state.youglishPlaying) {
+      state.youglishWidget.pause();
+      state.youglishPlaying = false;
+      if (btn) {
+        btn.innerHTML = `<svg class="ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+      }
+    } else {
+      state.youglishWidget.play();
+      state.youglishPlaying = true;
+      if (btn) {
+        btn.innerHTML = `<svg class="ctrl-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
+      }
+    }
+  } catch (e) {
+    console.error("YouGlish play/pause toggle failed:", e);
+  }
+}
+
+function updateYouGlishTrackInfo() {
+  const infoEl = document.getElementById('yg-track-info');
+  if (infoEl) {
+    const current = state.youglishLastTrackNumber > 0 ? state.youglishLastTrackNumber : 1;
+    const total = state.youglishTotalTracks > 0 ? state.youglishTotalTracks : 0;
+    infoEl.textContent = `Clip ${current} of ${total}`;
   }
 }
 
