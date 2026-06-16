@@ -11,7 +11,9 @@ const state = {
   quizSelections: {}, // Maps question index to selected choice index
   grammarQuizSelections: {},
   vocabQuizSelections: {},
-  activeVocabQuiz: null
+  activeVocabQuiz: null,
+  storyAudio: null,
+  storyAudioSpeed: 1
 };
 
 // DOM Elements
@@ -73,6 +75,9 @@ function navigateTo(target) {
 }
 
 function switchView(viewName) {
+  // Pause and reset story audio when navigating away
+  resetStoryAudio();
+  
   // Hide all views
   Object.keys(views).forEach(key => {
     views[key].classList.remove('active');
@@ -229,6 +234,11 @@ function renderLessonView(moduleId) {
 // --- 5. LESSON VIEW TAB PANELS ---
 
 function switchLessonTab(tabId) {
+  // Pause and reset story audio if switching to a non-story tab
+  if (tabId !== 'story') {
+    resetStoryAudio();
+  }
+  
   // Update Active Tab Button
   const tabButtons = document.querySelectorAll('.tab-btn');
   tabButtons.forEach(btn => {
@@ -274,8 +284,37 @@ function renderVocabTab(module) {
 
 function renderStoryTab(module) {
   const container = document.getElementById('story-container');
-  const highlightedHTML = highlightStoryKeywords(module.story, module.vocabulary);
-  container.innerHTML = `<p>${highlightedHTML}</p>`;
+  
+  // Pause and reset any currently playing story audio
+  resetStoryAudio();
+  
+  // Wrap each sentence in a span with timestamp data
+  let processedHTML = highlightStorySentences(module.story, module.storyTimestamps);
+  
+  // Wrap keywords inside those sentences
+  processedHTML = highlightStoryKeywords(processedHTML, module.vocabulary);
+  
+  // Generate the player HTML if the module has audio metadata
+  let playerBarHTML = '';
+  if (module.audioPath) {
+    playerBarHTML = `
+      <div class="story-player-bar">
+        <button class="story-player-btn" id="story-play-btn" onclick="toggleStoryAudio('${module.audioPath}')">▶</button>
+        <div class="story-progress-container" id="story-progress-container" onclick="seekStoryAudio(event)">
+          <div class="story-progress-bar" id="story-progress-bar"></div>
+        </div>
+        <div class="story-time-display" id="story-time-display">0:00 / 0:00</div>
+        <select class="story-speed-select" id="story-speed-select" onchange="setStoryAudioSpeed(this.value)">
+          <option value="1">1.0x</option>
+          <option value="1.25">1.25x</option>
+          <option value="1.5">1.5x</option>
+          <option value="0.85">0.85x</option>
+        </select>
+      </div>
+    `;
+  }
+  
+  container.innerHTML = playerBarHTML + `<div class="story-text-container">${processedHTML}</div>`;
 }
 
 function renderGrammarTab(module) {
@@ -807,4 +846,161 @@ function openKeywordPopup(wordName) {
 function closeWordModal() {
   const modal = document.getElementById('word-modal');
   if (modal) modal.classList.remove('active');
+}
+
+// --- 9. STORY AUDIO PLAYER CONTROLLER ---
+
+function highlightStorySentences(storyText, timestamps) {
+  const parts = storyText.split("<div class='reading-comprehension'");
+  let narrative = parts[0];
+  
+  const paragraphs = narrative.split("<br><br>");
+  let globalSentenceIdx = 0;
+  
+  const processedParagraphs = paragraphs.map(para => {
+    if (!para.trim()) return para;
+    
+    // Split sentences by dot/exclamation/question mark followed by space or end of string
+    const sentences = para.split(/(?<=\.|\?|!)\s+/);
+    
+    const processedSentences = sentences.map(sentence => {
+      if (!sentence.trim()) return sentence;
+      
+      const idx = globalSentenceIdx++;
+      let timeAttrs = '';
+      if (timestamps && timestamps[idx]) {
+        timeAttrs = `data-start="${timestamps[idx].start}" data-end="${timestamps[idx].end}"`;
+      }
+      
+      return `<span class="story-sentence" id="story-sentence-${idx}" ${timeAttrs}>${sentence}</span>`;
+    });
+    
+    return processedSentences.join(" ");
+  });
+  
+  let narrativeHighlighted = processedParagraphs.join("<br><br>");
+  
+  if (parts.length > 1) {
+    return narrativeHighlighted + "<div class='reading-comprehension'" + parts[1];
+  }
+  return narrativeHighlighted;
+}
+
+function resetStoryAudio() {
+  if (state.storyAudio) {
+    state.storyAudio.pause();
+    state.storyAudio.removeEventListener('timeupdate', onAudioTimeUpdate);
+    state.storyAudio.removeEventListener('loadedmetadata', onAudioMetadataLoaded);
+    state.storyAudio.removeEventListener('ended', onAudioEnded);
+    state.storyAudio = null;
+  }
+  
+  // Reset UI controls if they exist in DOM
+  const playBtn = document.getElementById('story-play-btn');
+  if (playBtn) playBtn.textContent = '▶';
+  
+  const progressBar = document.getElementById('story-progress-bar');
+  if (progressBar) progressBar.style.width = '0%';
+  
+  const timeDisplay = document.getElementById('story-time-display');
+  if (timeDisplay) timeDisplay.textContent = '0:00 / 0:00';
+  
+  // Remove all highlights
+  document.querySelectorAll('.story-sentence').forEach(span => {
+    span.classList.remove('active-sentence');
+  });
+}
+
+function toggleStoryAudio(audioPath) {
+  if (!state.storyAudio) {
+    state.storyAudio = new Audio(audioPath);
+    state.storyAudio.playbackRate = state.storyAudioSpeed;
+    
+    state.storyAudio.addEventListener('timeupdate', onAudioTimeUpdate);
+    state.storyAudio.addEventListener('loadedmetadata', onAudioMetadataLoaded);
+    state.storyAudio.addEventListener('ended', onAudioEnded);
+  }
+  
+  const playBtn = document.getElementById('story-play-btn');
+  if (state.storyAudio.paused) {
+    state.storyAudio.play();
+    if (playBtn) playBtn.textContent = '⏸';
+  } else {
+    state.storyAudio.pause();
+    if (playBtn) playBtn.textContent = '▶';
+  }
+}
+
+function seekStoryAudio(event) {
+  const container = document.getElementById('story-progress-container');
+  if (!container || !state.storyAudio) return;
+  
+  const rect = container.getBoundingClientRect();
+  const clickX = event.clientX - rect.left;
+  const percentage = clickX / rect.width;
+  
+  if (state.storyAudio.duration) {
+    state.storyAudio.currentTime = percentage * state.storyAudio.duration;
+  }
+}
+
+function setStoryAudioSpeed(val) {
+  const speed = parseFloat(val);
+  state.storyAudioSpeed = speed;
+  if (state.storyAudio) {
+    state.storyAudio.playbackRate = speed;
+  }
+}
+
+function onAudioTimeUpdate() {
+  const audio = state.storyAudio;
+  if (!audio) return;
+  
+  const currentTime = audio.currentTime;
+  
+  // Update progress bar
+  const progressBar = document.getElementById('story-progress-bar');
+  if (progressBar) {
+    const percentage = (currentTime / audio.duration) * 100;
+    progressBar.style.width = `${percentage}%`;
+  }
+  
+  // Update time display
+  const timeDisplay = document.getElementById('story-time-display');
+  if (timeDisplay) {
+    timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(audio.duration || 0)}`;
+  }
+  
+  // Highlight active sentence
+  const sentences = document.querySelectorAll('.story-sentence');
+  sentences.forEach(span => {
+    const start = parseFloat(span.getAttribute('data-start'));
+    const end = parseFloat(span.getAttribute('data-end'));
+    
+    if (currentTime >= start && currentTime <= end) {
+      span.classList.add('active-sentence');
+    } else {
+      span.classList.remove('active-sentence');
+    }
+  });
+}
+
+function onAudioMetadataLoaded() {
+  const audio = state.storyAudio;
+  if (!audio) return;
+  const timeDisplay = document.getElementById('story-time-display');
+  if (timeDisplay) {
+    timeDisplay.textContent = `0:00 / ${formatTime(audio.duration)}`;
+  }
+}
+
+function onAudioEnded() {
+  resetStoryAudio();
+}
+
+function formatTime(seconds) {
+  if (isNaN(seconds)) return "0:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }

@@ -215,6 +215,24 @@ const c1Modules = [
         answer: 2,
         explanation: "Nefarious means wicked, criminal, or villainous."
       }
+    ],
+    audioPath: "audio/module1.mp3",
+    storyTimestamps: [
+      { start: 0.0, end: 5.1 },
+      { start: 5.1, end: 12.4 },
+      { start: 12.4, end: 24.8 },
+      { start: 24.8, end: 29.2 },
+      { start: 29.2, end: 37.2 },
+      { start: 37.2, end: 42.3 },
+      { start: 42.3, end: 47.1 },
+      { start: 47.1, end: 53.3 },
+      { start: 53.3, end: 61.7 },
+      { start: 61.7, end: 65.0 },
+      { start: 65.0, end: 72.3 },
+      { start: 72.3, end: 77.8 },
+      { start: 77.8, end: 82.6 },
+      { start: 82.6, end: 88.1 },
+      { start: 88.1, end: 94.0 }
     ]
   },
   {
