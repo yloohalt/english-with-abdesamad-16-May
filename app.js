@@ -19,7 +19,8 @@ const state = {
   youglishSettings: {
     accent: localStorage.getItem('yg-accent') || 'us',
     repeatTarget: localStorage.getItem('yg-repeatTarget') || 'word',
-    repeatCount: parseInt(localStorage.getItem('yg-repeatCount') || '3')
+    repeatCount: parseInt(localStorage.getItem('yg-repeatCount') || '3'),
+    blurVideo: localStorage.getItem('yg-blurVideo') === 'true'
   },
   youglishWidget: null,
   youglishReady: false,
@@ -869,6 +870,10 @@ function openKeywordPopup(wordName) {
             <option value="10">10 times</option>
           </select>
         </div>
+        <div class="yg-setting-row">
+          <label for="yg-blur-video">Blur Video Content:</label>
+          <input type="checkbox" id="yg-blur-video" onchange="updateYouGlishSetting('blurVideo', this.checked)">
+        </div>
       </div>
     </div>
     
@@ -893,11 +898,13 @@ function openKeywordPopup(wordName) {
       <div class="word-card-section-title">Pronunciation Video</div>
       <div class="youglish-player-container" id="yg-player-container">
         <div id="yg-widget-element"></div>
+        <div class="yg-video-blur-overlay" id="yg-video-blur-overlay" style="display: none;"></div>
         <div class="yg-loader" id="yg-loader">
           <div class="spinner"></div>
           <span>Loading pronunciation video...</span>
         </div>
       </div>
+      <div class="yg-custom-caption-container" id="yg-custom-caption" style="display: none;"></div>
     </div>
     
     <div>
@@ -949,6 +956,12 @@ function toggleYouGlishPlayer(word) {
     // Pause general lesson story audio
     resetStoryAudio();
     
+    // Sync blur overlay visibility
+    const blurOverlay = document.getElementById('yg-video-blur-overlay');
+    if (blurOverlay) {
+      blurOverlay.style.display = state.youglishSettings.blurVideo ? 'block' : 'none';
+    }
+    
     // Load video
     loadYouGlish(word);
   }
@@ -970,6 +983,7 @@ function toggleYouGlishSettings() {
     // Sync current values
     document.getElementById('yg-accent').value = state.youglishSettings.accent;
     document.getElementById('yg-repeat-count').value = state.youglishSettings.repeatCount;
+    document.getElementById('yg-blur-video').checked = state.youglishSettings.blurVideo;
     
     const radios = document.getElementsByName('yg-repeat-target');
     radios.forEach(radio => {
@@ -979,13 +993,22 @@ function toggleYouGlishSettings() {
 }
 
 function updateYouGlishSetting(key, value) {
-  state.youglishSettings[key] = key === 'repeatCount' ? parseInt(value) : value;
-  localStorage.setItem(`yg-${key}`, value);
-  
-  // Refresh player if active
-  if (state.youglishActive && state.youglishCurrentWord) {
-    if (key === 'accent') {
-      loadYouGlish(state.youglishCurrentWord);
+  if (key === 'blurVideo') {
+    state.youglishSettings.blurVideo = value;
+    localStorage.setItem('yg-blurVideo', value);
+    const blurOverlay = document.getElementById('yg-video-blur-overlay');
+    if (blurOverlay) {
+      blurOverlay.style.display = value ? 'block' : 'none';
+    }
+  } else {
+    state.youglishSettings[key] = key === 'repeatCount' ? parseInt(value) : value;
+    localStorage.setItem(`yg-${key}`, value);
+    
+    // Refresh player if active
+    if (state.youglishActive && state.youglishCurrentWord) {
+      if (key === 'accent') {
+        loadYouGlish(state.youglishCurrentWord);
+      }
     }
   }
 }
@@ -1000,6 +1023,13 @@ function loadYouGlish(word) {
     loader.innerHTML = '<div class="spinner"></div><span>Loading pronunciation video...</span>';
   }
   if (widgetEl) widgetEl.style.display = 'none';
+  
+  // Clear custom caption container when loading a new search
+  const captionEl = document.getElementById('yg-custom-caption');
+  if (captionEl) {
+    captionEl.style.display = 'none';
+    captionEl.innerHTML = '';
+  }
   
   clearYouGlishTimers();
   
@@ -1030,10 +1060,10 @@ function loadYouGlish(word) {
   
   try {
     // Re-instantiate widget because container was replaced dynamically
-    // Use components: 88 (shows player + captions + speed controls + control buttons; hides search and title)
+    // Use components: 80 (shows player + speed controls + control buttons; hides native caption, search box and title)
     // Omit width property so it defaults to "expand to all its container width" responsively
     state.youglishWidget = new YG.Widget("yg-widget-element", {
-      components: 88,
+      components: 80,
       backgroundColor: colors.backgroundColor,
       linkColor: colors.linkColor,
       titleColor: colors.titleColor,
@@ -1116,6 +1146,20 @@ function onYouglishCaptionChange(event) {
   clearYouGlishTimers();
   
   const caption = event.caption || '';
+  
+  // Format and render custom subtitles below the video
+  const captionEl = document.getElementById('yg-custom-caption');
+  if (captionEl) {
+    let formattedCaption = caption;
+    if (caption.includes('[[[')) {
+      formattedCaption = caption
+        .replace(/\[\[\[/g, '<mark class="yg-highlight">')
+        .replace(/\]\]\]/g, '</mark>');
+    }
+    captionEl.innerHTML = formattedCaption;
+    captionEl.style.display = 'flex';
+  }
+  
   if (state.youglishSettings.repeatTarget === 'word' && caption.includes('[[[')) {
     const idxStart = caption.indexOf('[[[');
     const idxEnd = caption.indexOf(']]]');
