@@ -1145,7 +1145,8 @@ function onYouglishVideoChange(event) {
 function onYouglishCaptionChange(event) {
   clearYouGlishTimers();
   
-  const caption = event.caption || '';
+  // YouGlish API returns URL-encoded captions; decode it to clean spaces and brackets
+  const caption = decodeURIComponent(event.caption || '');
   
   // Format and render custom subtitles below the video
   const captionEl = document.getElementById('yg-custom-caption');

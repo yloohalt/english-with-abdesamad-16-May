@@ -1521,7 +1521,7 @@ body.dark-mode .story-sentence.active-sentence {
 /* YouGlish player container */
 .youglish-player-container {
   width: 100%;
-  height: 360px;
+  height: 270px;
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid var(--card-border);
@@ -1529,6 +1529,12 @@ body.dark-mode .story-sentence.active-sentence {
   position: relative;
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
+}
+
+@media (max-width: 480px) {
+  .youglish-player-container {
+    height: 220px;
+  }
 }
 
 .youglish-player-container iframe {
