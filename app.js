@@ -308,7 +308,7 @@ function renderVocabTab(module) {
       <div class="vocab-word-header">
         <span class="vocab-word ar-hover">${v.word}<span class="ar-tip">${v.arabic || ''}</span></span>
         <span class="vocab-type">[${v.type}]</span>
-        <span class="vocab-pronounce">${v.stress}</span>
+        <span class="vocab-pronounce">${v.stress} &nbsp;<span style="font-family:monospace;color:var(--accent-color);font-weight:600;">${v.ipa || ''}</span></span>
       </div>
       <div class="vocab-def">
         <span class="ar-hover">${v.def}<span class="ar-tip">${v.arabicDef || ''}</span></span>
@@ -316,6 +316,8 @@ function renderVocabTab(module) {
       <div class="vocab-details">
         <div><strong>Example:</strong> <em class="ar-hover">"${v.ex}"<span class="ar-tip">${v.arabicEx || ''}</span></em></div>
         <div><strong>Collocations:</strong> ${collHTML}</div>
+        ${v.syn ? `<div><strong>Synonyms:</strong> ${v.syn}</div>` : ''}
+        ${v.ant ? `<div><strong>Antonyms:</strong> ${v.ant}</div>` : ''}
       </div>
     `;
     container.appendChild(item);
