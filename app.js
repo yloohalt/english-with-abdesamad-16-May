@@ -281,28 +281,50 @@ function switchLessonTab(tabId) {
 function renderVocabTab(module) {
   const container = document.getElementById('vocab-list-container');
   container.innerHTML = '';
-  
+
   module.vocabulary.forEach(v => {
+    // Build individual collocation hover items
+    // arabicColl format: "eng colloc = arabic, eng colloc = arabic, ..."
+    let collHTML = '';
+    if (v.arabicColl) {
+      const pairs = v.arabicColl.split(',').map(p => p.trim());
+      const engColls = (v.coll || '').split(',').map(p => p.trim());
+      collHTML = pairs.map((pair, i) => {
+        const eqIdx = pair.indexOf('=');
+        const engPart = eqIdx > -1 ? pair.substring(0, eqIdx).trim() : (engColls[i] || pair);
+        const arPart  = eqIdx > -1 ? pair.substring(eqIdx + 1).trim() : '';
+        if (arPart) {
+          return `<span class="ar-hover">${engPart}<span class="ar-tip">${arPart}</span></span>`;
+        }
+        return `<span>${engPart}</span>`;
+      }).join('<span style="color:var(--text-secondary)"> &nbsp;·&nbsp; </span>');
+    } else {
+      collHTML = v.coll || '';
+    }
+
     const item = document.createElement('div');
     item.className = 'vocab-item';
     item.innerHTML = `
       <div class="vocab-word-header">
-        <span class="vocab-word">${v.word}</span>
+        <span class="vocab-word ar-hover">${v.word}<span class="ar-tip">${v.arabic || ''}</span></span>
         <span class="vocab-type">[${v.type}]</span>
         <span class="vocab-pronounce">${v.stress}</span>
       </div>
-      <div class="vocab-def">${v.def}</div>
+      <div class="vocab-def">
+        <span class="ar-hover">${v.def}<span class="ar-tip">${v.arabicDef || ''}</span></span>
+      </div>
       <div class="vocab-details">
-        <div><strong>Example:</strong> <em>"${v.ex}"</em></div>
-        <div><strong>Collocations:</strong> ${v.coll}</div>
+        <div><strong>Example:</strong> <em class="ar-hover">"${v.ex}"<span class="ar-tip">${v.arabicEx || ''}</span></em></div>
+        <div><strong>Collocations:</strong> ${collHTML}</div>
       </div>
     `;
     container.appendChild(item);
   });
-  
+
   // Render practice quiz below vocab list
   renderVocabQuizSection(module);
 }
+
 
 function renderStoryTab(module) {
   const container = document.getElementById('story-container');
@@ -817,21 +839,19 @@ function openKeywordPopup(wordName) {
   const cardContent = modal.querySelector('.word-card');
   if (!cardContent) return;
   
-  const arabicTrans = v.arabic || '';
   const syllables = v.syllables || v.stress || v.word;
   const ipa = v.ipa || '/.../';
-  
+
   cardContent.innerHTML = `
     <div class="word-card-header">
       <div>
         <h2 class="word-card-title">${v.word}</h2>
         <div style="margin-top: 0.3rem; display: flex; gap: 0.5rem; align-items: center;">
           <span class="word-card-type">${v.type}</span>
-          <span style="font-size: 1.1rem; color: #a855f7; font-weight: 600;">${arabicTrans}</span>
         </div>
       </div>
       <div style="display: flex; gap: 0.8rem; align-items: center;">
-        <button class="word-card-action-btn video-btn" id="word-video-btn" onclick="toggleYouGlishPlayer('${v.word.replace(/'/g, "\\'")}')" title="Watch Pronunciation Video">
+        <button class="word-card-action-btn video-btn" id="word-video-btn" onclick="toggleYouGlishPlayer('${v.word.replace(/'/g, "\\'")}') " title="Watch Pronunciation Video">
           <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
         </button>
         <button class="word-card-action-btn settings-btn" id="word-settings-btn" onclick="toggleYouGlishSettings()" title="YouGlish Settings">
@@ -840,7 +860,7 @@ function openKeywordPopup(wordName) {
         <button class="modal-close" style="position: static; margin-top: 0;" onclick="closeWordModal()">&times;</button>
       </div>
     </div>
-    
+
     <!-- YouGlish Settings Panel -->
     <div class="youglish-settings-panel" id="yg-settings-panel" style="display: none;">
       <h4>YouGlish Looping Settings</h4>
@@ -877,23 +897,27 @@ function openKeywordPopup(wordName) {
         </div>
       </div>
     </div>
-    
+
     <div class="word-card-pronounce">
       <div class="word-card-section-title">Pronunciation Guide</div>
       <div><strong>Syllables:</strong> ${syllables}</div>
       <div><strong>US IPA:</strong> <span style="font-family: monospace; font-size: 1rem; color: var(--accent-color); font-weight: 600;">${ipa}</span></div>
     </div>
-    
+
     <div>
       <div class="word-card-section-title">Definition</div>
-      <div class="word-card-def">${v.def}</div>
+      <div class="word-card-def">
+        <span class="word-card-ar-hover">${v.def}<span class="ar-tip">${v.arabicDef || v.arabic || ''}</span></span>
+      </div>
     </div>
-    
+
     <div>
       <div class="word-card-section-title">Example Sentence</div>
-      <div class="word-card-ex">"${v.ex}"</div>
+      <div class="word-card-ex">
+        <span class="word-card-ar-hover">"${v.ex}"<span class="ar-tip">${v.arabicEx || ''}</span></span>
+      </div>
     </div>
-    
+
     <!-- Dedicated YouGlish Section (Toggled via JS) -->
     <div id="yg-section-wrapper" style="display: none;">
       <div class="word-card-section-title">Pronunciation Video</div>
@@ -905,7 +929,7 @@ function openKeywordPopup(wordName) {
           <span>Loading pronunciation video...</span>
         </div>
       </div>
-      
+
       <!-- Custom Premium YouGlish Controls -->
       <div class="yg-custom-controls" id="yg-controls-container">
         <div class="yg-control-left">
@@ -935,23 +959,11 @@ function openKeywordPopup(wordName) {
           </select>
         </div>
       </div>
-      
+
       <div class="yg-custom-caption-container" id="yg-custom-caption" style="display: none;"></div>
     </div>
-    
-    <div>
-      <div class="word-card-section-title">Visualization</div>
-      <div class="word-image-placeholder">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-          <circle cx="8.5" cy="8.5" r="1.5"></circle>
-          <polyline points="21 15 16 10 5 21"></polyline>
-        </svg>
-        <span>16:9 Image Visualization Placeholder</span>
-      </div>
-    </div>
   `;
-  
+
   modal.classList.add('active');
 }
 

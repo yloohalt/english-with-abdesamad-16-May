@@ -634,6 +634,103 @@ body.dark-mode .level-card.active-level:hover {
   margin: 0;
 }
 
+/* Arabic hover-reveal tooltip */
+.ar-hover {
+  position: relative;
+  display: inline;
+  cursor: pointer;
+  border-bottom: 1px dashed var(--accent-color);
+  padding-bottom: 1px;
+}
+
+.ar-hover .ar-tip {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  white-space: nowrap;
+  direction: rtl;
+  z-index: 100;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.35);
+}
+
+/* Arrow under the tooltip bubble */
+.ar-hover .ar-tip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--accent-color);
+}
+
+.ar-hover:hover .ar-tip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Word-card (popup) Arabic hover */
+.word-card-ar-hover {
+  position: relative;
+  display: inline;
+  cursor: pointer;
+  border-bottom: 1px dashed var(--accent-color);
+  padding-bottom: 1px;
+}
+
+.word-card-ar-hover .ar-tip {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  white-space: nowrap;
+  direction: rtl;
+  z-index: 200;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.35);
+  max-width: 280px;
+  white-space: normal;
+  text-align: right;
+}
+
+.word-card-ar-hover .ar-tip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--accent-color);
+}
+
+.word-card-ar-hover:hover .ar-tip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+
 /* Story Tab Details */
 .story-wrapper {
   font-size: 1.15rem;
