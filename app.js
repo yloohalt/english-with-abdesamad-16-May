@@ -1122,6 +1122,21 @@ function loadYouGlish(word) {
     });
     
     state.youglishWidget.fetch(word, "english", accent);
+
+    // Use MutationObserver to catch the iframe the instant YouGlish injects it
+    // and immediately set scrolling=no — more reliable than setTimeout
+    const widgetContainer = document.getElementById('yg-widget-element');
+    if (widgetContainer) {
+      const iframeObserver = new MutationObserver((mutations, obs) => {
+        const ygIframe = widgetContainer.querySelector('iframe');
+        if (ygIframe) {
+          ygIframe.setAttribute('scrolling', 'no');
+          ygIframe.style.overflow = 'hidden';
+          obs.disconnect(); // Stop observing once iframe is found
+        }
+      });
+      iframeObserver.observe(widgetContainer, { childList: true, subtree: true });
+    }
   } catch (err) {
     console.error("YouGlish init error:", err);
     if (loader) {
@@ -1200,15 +1215,6 @@ function onYouglishFetchDone(event) {
     if (controlsEl) controlsEl.style.display = 'flex';
     state.youglishTotalTracks = event.totalResult;
     updateYouGlishTrackInfo();
-
-    // Remove scrollbar from the YouGlish iframe — set scrolling=no and overflow:hidden
-    setTimeout(() => {
-      const ygIframe = widgetEl ? widgetEl.querySelector('iframe') : null;
-      if (ygIframe) {
-        ygIframe.setAttribute('scrolling', 'no');
-        ygIframe.style.overflow = 'hidden';
-      }
-    }, 300);
   }
 }
 

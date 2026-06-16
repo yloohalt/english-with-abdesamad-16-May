@@ -1558,13 +1558,13 @@ body[data-theme="gold"] .youglish-player-container {
 
 .youglish-player-container iframe {
   width: 100% !important;
-  /* Render iframe taller than container so the internal YouGlish white bottom chrome is pushed out of view */
-  height: calc(100% + 80px) !important;
-  margin-top: -2px;
+  /* Push iframe UP to clip YouGlish blue internal header bar out of view via container overflow:hidden */
+  /* Also make it taller to ensure the white bottom chrome is also clipped */
+  height: calc(100% + 138px) !important;
+  margin-top: -58px;
   border: none !important;
   display: block;
   overflow: hidden;
-  scrolling: no;
 }
 
 .yg-loader {
