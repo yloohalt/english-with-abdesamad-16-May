@@ -353,7 +353,81 @@ const c1Modules = [
       { start: 77.8, end: 82.6 },
       { start: 82.6, end: 88.1 },
       { start: 88.1, end: 94.0 }
-    ]
+    ],
+    vocabQuizData: {
+      part1: [
+        { qNumber: 1, question: "After hours of pressure, the mayor finally _______ to the committee’s demands.", choices: ["resisted", "acquiesced", "objected", "opposed"], answer: 1 },
+        { qNumber: 2, question: "The manager’s _______ decisions made it impossible for the team to plan ahead.", choices: ["plausible", "taciturn", "capricious", "steady"], answer: 2 },
+        { qNumber: 3, question: "The research report suffered from a _______ of reliable data.", choices: ["surplus", "abundance", "plenty", "dearth"], answer: 3 },
+        { qNumber: 4, question: "The online trend was _______; it disappeared after only three days.", choices: ["enduring", "permanent", "ephemeral", "lasting"], answer: 2 },
+        { qNumber: 5, question: "The _______ editor checked every comma, space, and footnote before publication.", choices: ["careless", "sloppy", "fastidious", "unfastidious"], answer: 2 },
+        { qNumber: 6, question: "As the sun rose over the mountains, the travelers felt an _______ sense of wonder.", choices: ["ineffable", "ordinary", "expressible", "plausible"], answer: 0 },
+        { qNumber: 7, question: "The city planted thousands of trees to _______ the risk of flooding.", choices: ["aggravate", "mitigate", "intensify", "exacerbate"], answer: 1 },
+        { qNumber: 8, question: "The investigation revealed that the charity’s funds had been used for _______ purposes.", choices: ["virtuous", "lawful", "honorable", "nefarious"], answer: 3 },
+        { qNumber: 9, question: "The spokesperson used technical jargon to _______ the truth about the company’s failure.", choices: ["clarify", "simplify", "illuminate", "obfuscate"], answer: 3 },
+        { qNumber: 10, question: "The witness gave a _______ explanation, but the detective still wanted more evidence.", choices: ["plausible", "implausible", "unbelievable", "unlikely"], answer: 0 },
+        { qNumber: 11, question: "The final paragraph was removed because it contained _______ information.", choices: ["essential", "necessary", "indispensable", "superfluous"], answer: 3 },
+        { qNumber: 12, question: "The _______ guard rarely spoke, but he noticed every detail.", choices: ["talkative", "loquacious", "garrulous", "taciturn"], answer: 3 }
+      ],
+      part2: [
+        { word: "Acquiesce", meaning: "to accept something without protest, often unwillingly", correctLetter: "H" },
+        { word: "Capricious", meaning: "changing suddenly and unpredictably", correctLetter: "I" },
+        { word: "Dearth", meaning: "a serious lack of something", correctLetter: "E" },
+        { word: "Ephemeral", meaning: "lasting for only a short time", correctLetter: "A" },
+        { word: "Fastidious", meaning: "very careful and hard to please", correctLetter: "J" },
+        { word: "Ineffable", meaning: "too great or beautiful to describe in words", correctLetter: "K" },
+        { word: "Mitigate", meaning: "to make something bad less serious", correctLetter: "B" },
+        { word: "Nefarious", meaning: "very evil, immoral, or criminal", correctLetter: "D" },
+        { word: "Obfuscate", meaning: "to make something unclear or difficult to understand", correctLetter: "L" },
+        { word: "Plausible", meaning: "seeming reasonable or believable", correctLetter: "C" },
+        { word: "Superfluous", meaning: "unnecessary because there is already enough", correctLetter: "G" },
+        { word: "Taciturn", meaning: "quiet and not willing to speak much", correctLetter: "F" }
+      ],
+      part3: [
+        { word: "mitigate", collocation: "the impact", choices: ["the impact", "the silence", "the furniture", "the apology"], answer: 0 },
+        { word: "plausible", collocation: "explanation", choices: ["explanation", "cleanliness", "pressure", "shortage"], answer: 0 },
+        { word: "nefarious", collocation: "purposes", choices: ["purposes", "sunshine", "kindness", "evidence"], answer: 0 },
+        { word: "ineffable", collocation: "beauty", choices: ["beauty", "damage", "shortage", "decision"], answer: 0 },
+        { word: "superfluous", collocation: "details", choices: ["details", "pressure", "peace", "climate change"], answer: 0 },
+        { word: "acquiesce", collocation: "to pressure", choices: ["to pressure", "about details", "the facts", "a shortage"], answer: 0 },
+        { word: "fastidious", collocation: "attention to detail", choices: ["attention to detail", "explanation", "fame", "plot"], answer: 0 },
+        { word: "obfuscate", collocation: "the truth", choices: ["the truth", "the impact", "a decision", "the weather"], answer: 0 },
+        { word: "dearth", collocation: "of evidence", choices: ["of evidence", "to pressure", "of beauty", "in a decision"], answer: 0 },
+        { word: "taciturn", collocation: "response", choices: ["response", "scheme", "impact", "fame"], answer: 0 }
+      ],
+      part4: [
+        { qNumber: 35, question: "In this sentence, what is the closest meaning of <strong>ephemeral</strong>?<br><br><em>“His fame was ephemeral; within a week, nobody remembered his name.”</em>", choices: ["permanent", "fleeting", "careful", "evil"], answer: 1 },
+        { qNumber: 36, question: "Which word is closest to the opposite of <strong>mitigate</strong>?", choices: ["alleviate", "reduce", "ease", "exacerbate"], answer: 3 },
+        { qNumber: 37, question: "In this sentence, what is the closest meaning of <strong>fastidious</strong>?<br><br><em>“The designer was fastidious about every color and measurement.”</em>", choices: ["meticulous", "careless", "ordinary", "quiet"], answer: 0 },
+        { qNumber: 38, question: "Which word is closest to the opposite of <strong>plausible</strong>?", choices: ["believable", "credible", "reasonable", "implausible"], answer: 3 },
+        { qNumber: 39, question: "In this sentence, what is the closest meaning of <strong>obfuscate</strong>?<br><br><em>“The lawyer tried to obfuscate the issue with unnecessary details.”</em>", choices: ["clarify", "confuse", "simplify", "illuminate"], answer: 1 },
+        { qNumber: 40, question: "Which word is closest to the opposite of <strong>taciturn</strong>?", choices: ["reserved", "quiet", "reticent", "talkative"], answer: 3 },
+        { qNumber: 41, question: "In this sentence, what is the closest meaning of <strong>nefarious</strong>?<br><br><em>“The group was arrested for its nefarious activities.”</em>", choices: ["wicked", "lawful", "honorable", "ordinary"], answer: 0 },
+        { qNumber: 42, question: "Which word is closest to the opposite of <strong>superfluous</strong>?", choices: ["unnecessary", "redundant", "essential", "excessive"], answer: 2 }
+      ],
+      part5: [
+        { qNumber: 43, sentence: "The prince acquiesced the decision.", answer: "The prince acquiesced in the decision." },
+        { qNumber: 44, sentence: "There was a dearth reliable information.", answer: "There was a dearth of reliable information." },
+        { qNumber: 45, sentence: "The report obfuscated about the truth.", answer: "The report obfuscated the truth." },
+        { qNumber: 46, sentence: "His story sounded plausibly.", answer: "His story sounded plausible." },
+        { qNumber: 47, sentence: "The chef prepared the meal fastidious.", answer: "The chef prepared the meal fastidiously." },
+        { qNumber: 48, sentence: "The editor removed several superfluous informations.", answer: "The editor removed several pieces of superfluous information." },
+        { qNumber: 49, sentence: "He answered taciturn.", answer: "He answered taciturnly." },
+        { qNumber: 50, sentence: "The government mitigated against the damage.", answer: "The government mitigated the damage." }
+      ],
+      part6: [
+        { qNumber: 51, sentence: "The judge accepted the argument because it sounded highly _______.", bracket: "plausible", answer: "plausible" },
+        { qNumber: 52, sentence: "The policy helped reduce the damage, so it was an effective form of _______.", bracket: "mitigate", answer: "mitigation" },
+        { qNumber: 53, sentence: "The minister’s speech was full of deliberate _______.", bracket: "obfuscate", answer: "obfuscation" },
+        { qNumber: 54, sentence: "The chef checked the plates _______ before the guests arrived.", bracket: "fastidious", answer: "fastidiously" },
+        { qNumber: 55, sentence: "The beauty of the moment was almost _______.", bracket: "ineffable", answer: "ineffable" },
+        { qNumber: 56, sentence: "His silence and _______ made the villagers nervous.", bracket: "taciturn", answer: "taciturnity" }
+      ],
+      part7: {
+        instruction: "Write five original sentences. Use five different words from the list.",
+        words: ["acquiesce", "capricious", "dearth", "ephemeral", "fastidious", "ineffable", "mitigate", "nefarious", "obfuscate", "plausible", "superfluous", "taciturn"]
+      }
+    }
   },
   {
     id: 2,

@@ -616,13 +616,58 @@ function generateVocabQuiz(module) {
   });
 }
 
+function shuffleArray(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 function renderVocabQuizSection(module) {
   const quizContainer = document.getElementById('vocab-quiz-container');
   if (!quizContainer) return;
   
   quizContainer.innerHTML = '';
-  state.vocabQuizSelections = {};
   
+  // Check if this module has custom vocabQuizData
+  if (module.vocabQuizData) {
+    if (!state.customQuizState || state.customQuizActiveModuleId !== module.id) {
+      state.customQuizActiveModuleId = module.id;
+      state.activeCustomQuizPart = 1;
+      state.selectedPill = null;
+      state.customQuizState = {
+        part1: {},
+        part2: {},
+        part3: {},
+        part4: {},
+        part5: {},
+        part6: {},
+        part7: [
+          { word: "", text: "" },
+          { word: "", text: "" },
+          { word: "", text: "" },
+          { word: "", text: "" },
+          { word: "", text: "" }
+        ],
+        graded: false,
+        scores: { part1: 0, part2: 0, part3: 0, part4: 0, part5: 0, part6: 0, part7: 0 }
+      };
+      
+      // Shuffle definitions and collocations for the matching pools
+      state.customQuizPills = {
+        part2: shuffleArray(module.vocabQuizData.part2.map(item => item.meaning)),
+        part3: shuffleArray(module.vocabQuizData.part3.map(item => item.collocation))
+      };
+    }
+    
+    renderCustomQuiz(module);
+    return;
+  }
+  
+  // Otherwise render the dynamic one
+  state.vocabQuizSelections = {};
   const quizData = state.activeVocabQuiz;
   if (!quizData) return;
   
@@ -653,7 +698,6 @@ function renderVocabQuizSection(module) {
 
 function selectVocabQuizOption(qIndex, oIndex) {
   if (state.vocabQuizSelections[qIndex] !== undefined) return;
-  
   state.vocabQuizSelections[qIndex] = oIndex;
   
   const quizData = state.activeVocabQuiz;
@@ -662,20 +706,17 @@ function selectVocabQuizOption(qIndex, oIndex) {
   const q = quizData[qIndex];
   const isCorrect = (oIndex === q.answer);
   
-  const qCard = document.getElementById(`vocab-quiz-card-${qIndex}`);
   const optionsContainer = document.getElementById(`vocab-options-container-${qIndex}`);
   if (optionsContainer) {
     optionsContainer.classList.add('answered');
   }
   
-  // Highlight chosen option
   const chosen = document.getElementById(`vocab-option-${qIndex}-${oIndex}`);
   if (chosen) {
     if (isCorrect) {
       chosen.classList.add('correct');
     } else {
       chosen.classList.add('incorrect');
-      // Highlight correct option as well
       const correctOpt = document.getElementById(`vocab-option-${qIndex}-${q.answer}`);
       if (correctOpt) {
         correctOpt.classList.add('correct');
@@ -683,7 +724,6 @@ function selectVocabQuizOption(qIndex, oIndex) {
     }
   }
   
-  // Display feedback instantly
   const feedbackEl = document.getElementById(`vocab-feedback-${qIndex}`);
   if (feedbackEl) {
     if (isCorrect) {
@@ -694,6 +734,918 @@ function selectVocabQuizOption(qIndex, oIndex) {
       feedbackEl.innerHTML = `<strong>❌ Incorrect.</strong> The correct answer is "${q.choices[q.answer]}".<br><br><strong>Definition:</strong> ${q.definition}`;
     }
   }
+}
+
+// --- Custom Stepper Quiz Controller & Logic ---
+
+function renderCustomQuiz(module) {
+  const quizContainer = document.getElementById('vocab-quiz-container');
+  if (!quizContainer) return;
+  
+  const totalParts = 7;
+  const currentPart = state.activeCustomQuizPart;
+  const quizState = state.customQuizState;
+  const isGraded = quizState.graded;
+  
+  // Calculate progress percent
+  let progressPercent = 0;
+  if (currentPart === 'results') {
+    progressPercent = 100;
+  } else {
+    progressPercent = Math.round(((currentPart - 1) / totalParts) * 100);
+    if (progressPercent === 0) progressPercent = 5;
+  }
+  
+  // Build Tabs HTML
+  let tabsHTML = '';
+  for (let i = 1; i <= totalParts; i++) {
+    const activeClass = (currentPart === i) ? 'active' : '';
+    const completedClass = (isGraded || Object.keys(quizState[`part${i}`]).length > 0) ? 'completed' : '';
+    tabsHTML += `
+      <button class="part-tab-btn ${activeClass} ${completedClass}" onclick="goToQuizPart(${i})">
+        Part ${i}
+      </button>
+    `;
+  }
+  if (isGraded) {
+    const activeClass = (currentPart === 'results') ? 'active' : '';
+    tabsHTML += `
+      <button class="part-tab-btn ${activeClass} completed" id="results-tab-btn" onclick="goToQuizPart('results')">
+        Results
+      </button>
+    `;
+  }
+  
+  // Main layout wrapper
+  quizContainer.innerHTML = `
+    <div class="vocab-quiz-wizard">
+      <div class="quiz-wizard-header">
+        <div class="quiz-part-tabs">${tabsHTML}</div>
+        <div class="quiz-progress-bar-container">
+          <div class="quiz-progress-bar" style="width: ${progressPercent}%;"></div>
+        </div>
+      </div>
+      
+      <div class="quiz-panels-container" id="quiz-panels-container">
+        <!-- Rendered dynamically -->
+      </div>
+      
+      <div class="quiz-wizard-footer">
+        <button class="quiz-nav-btn prev-btn" id="quiz-prev-btn" onclick="prevQuizPart()">Previous Part</button>
+        <button class="quiz-nav-btn next-btn" id="quiz-next-btn" onclick="nextQuizPart()">Next Part</button>
+        <button class="quiz-nav-btn submit-all-btn" id="quiz-submit-btn" onclick="gradeEntireQuiz()" style="display: none;">Submit Quiz & Grade</button>
+      </div>
+    </div>
+  `;
+  
+  renderActiveQuizPanel(module);
+  updateQuizNavButtons();
+}
+
+function updateQuizNavButtons() {
+  const currentPart = state.activeCustomQuizPart;
+  const prevBtn = document.getElementById('quiz-prev-btn');
+  const nextBtn = document.getElementById('quiz-next-btn');
+  const submitBtn = document.getElementById('quiz-submit-btn');
+  const isGraded = state.customQuizState.graded;
+  
+  if (!prevBtn || !nextBtn || !submitBtn) return;
+  
+  if (currentPart === 'results') {
+    prevBtn.style.display = 'none';
+    nextBtn.style.display = 'none';
+    submitBtn.style.display = 'none';
+    return;
+  }
+  
+  prevBtn.style.display = 'block';
+  prevBtn.disabled = (currentPart === 1);
+  
+  if (currentPart === 7) {
+    nextBtn.style.display = 'none';
+    submitBtn.style.display = 'block';
+    if (isGraded) {
+      submitBtn.textContent = 'View Results';
+      submitBtn.onclick = () => goToQuizPart('results');
+    } else {
+      submitBtn.textContent = 'Submit Quiz & Grade';
+      submitBtn.onclick = () => gradeEntireQuiz();
+    }
+  } else {
+    nextBtn.style.display = 'block';
+    submitBtn.style.display = 'none';
+    nextBtn.onclick = () => nextQuizPart();
+  }
+}
+
+function goToQuizPart(partNum) {
+  state.activeCustomQuizPart = partNum;
+  state.selectedPill = null; // reset click matching state
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  renderCustomQuiz(module);
+}
+
+function prevQuizPart() {
+  const currentPart = state.activeCustomQuizPart;
+  if (currentPart === 'results') {
+    goToQuizPart(7);
+  } else if (currentPart > 1) {
+    goToQuizPart(currentPart - 1);
+  }
+}
+
+function nextQuizPart() {
+  const currentPart = state.activeCustomQuizPart;
+  if (currentPart < 7) {
+    goToQuizPart(currentPart + 1);
+  }
+}
+
+function renderActiveQuizPanel(module) {
+  const panelContainer = document.getElementById('quiz-panels-container');
+  if (!panelContainer) return;
+  
+  panelContainer.innerHTML = '';
+  const currentPart = state.activeCustomQuizPart;
+  const quizData = module.vocabQuizData;
+  const quizState = state.customQuizState;
+  const isGraded = quizState.graded;
+  
+  const panelDiv = document.createElement('div');
+  panelDiv.className = 'quiz-panel active';
+  
+  if (currentPart === 1) {
+    panelDiv.innerHTML = `
+      <div class="quiz-part-title">Part 1: Choose the Best Word</div>
+      <div class="quiz-part-desc">Choose the option that best completes the sentence. (Questions 1–12)</div>
+      <div class="quiz-container" id="part1-questions-container"></div>
+    `;
+    panelContainer.appendChild(panelDiv);
+    
+    const container = document.getElementById('part1-questions-container');
+    quizData.part1.forEach((q, qIndex) => {
+      const card = document.createElement('div');
+      card.className = 'quiz-question-card';
+      if (isGraded) {
+        const selected = quizState.part1[qIndex];
+        const isCorrect = (selected === q.answer);
+        card.classList.add(isCorrect ? 'correct' : 'incorrect');
+      }
+      
+      let choicesHTML = '';
+      q.choices.forEach((choice, oIndex) => {
+        let optClass = '';
+        if (quizState.part1[qIndex] === oIndex) {
+          optClass = 'selected';
+        }
+        if (isGraded) {
+          if (oIndex === q.answer) {
+            optClass = 'correct';
+          } else if (quizState.part1[qIndex] === oIndex) {
+            optClass = 'incorrect';
+          }
+        }
+        
+        choicesHTML += `
+          <div class="quiz-option ${optClass}" onclick="selectCustomPart1Option(${qIndex}, ${oIndex})">
+            <span class="option-marker">${String.fromCharCode(65 + oIndex)}</span>
+            <span class="option-text">${choice}</span>
+          </div>
+        `;
+      });
+      
+      card.innerHTML = `
+        <div class="quiz-question">${q.qNumber}. ${q.question}</div>
+        <div class="quiz-options">${choicesHTML}</div>
+      `;
+      container.appendChild(card);
+    });
+    
+  } else if (currentPart === 2) {
+    panelDiv.innerHTML = `
+      <div class="quiz-part-title">Part 2: Match the Word to Its Meaning</div>
+      <div class="quiz-part-desc">Drag definitions to the correct words, or click a definition pill and then a target slot next to a word. (Questions 13–24)</div>
+      <div id="part2-board-container"></div>
+    `;
+    panelContainer.appendChild(panelDiv);
+    renderPart2Board(module);
+    
+  } else if (currentPart === 3) {
+    panelDiv.innerHTML = `
+      <div class="quiz-part-title">Part 3: Collocation Matching</div>
+      <div class="quiz-part-desc">Drag the collocations to match the verbs/nouns, or click a collocation pill and then a target slot. (Questions 25–34)</div>
+      <div id="part3-board-container"></div>
+    `;
+    panelContainer.appendChild(panelDiv);
+    renderPart3Board(module);
+    
+  } else if (currentPart === 4) {
+    panelDiv.innerHTML = `
+      <div class="quiz-part-title">Part 4: Synonyms and Antonyms in Context</div>
+      <div class="quiz-part-desc">Choose the closest synonym or antonym for the vocabulary word in the context of the sentence. (Questions 35–42)</div>
+      <div class="quiz-container" id="part4-questions-container"></div>
+    `;
+    panelContainer.appendChild(panelDiv);
+    
+    const container = document.getElementById('part4-questions-container');
+    quizData.part4.forEach((q, qIndex) => {
+      const card = document.createElement('div');
+      card.className = 'quiz-question-card';
+      if (isGraded) {
+        const selected = quizState.part4[qIndex];
+        const isCorrect = (selected === q.answer);
+        card.classList.add(isCorrect ? 'correct' : 'incorrect');
+      }
+      
+      let choicesHTML = '';
+      q.choices.forEach((choice, oIndex) => {
+        let optClass = '';
+        if (quizState.part4[qIndex] === oIndex) {
+          optClass = 'selected';
+        }
+        if (isGraded) {
+          if (oIndex === q.answer) {
+            optClass = 'correct';
+          } else if (quizState.part4[qIndex] === oIndex) {
+            optClass = 'incorrect';
+          }
+        }
+        
+        choicesHTML += `
+          <div class="quiz-option ${optClass}" onclick="selectCustomPart4Option(${qIndex}, ${oIndex})">
+            <span class="option-marker">${String.fromCharCode(65 + oIndex)}</span>
+            <span class="option-text">${choice}</span>
+          </div>
+        `;
+      });
+      
+      card.innerHTML = `
+        <div class="quiz-question">${q.qNumber}. ${q.question}</div>
+        <div class="quiz-options">${choicesHTML}</div>
+      `;
+      container.appendChild(card);
+    });
+    
+  } else if (currentPart === 5) {
+    panelDiv.innerHTML = `
+      <div class="quiz-part-title">Part 5: Correct the Mistake</div>
+      <div class="quiz-part-desc">Rewrite the sentence correctly. Be careful with prepositions and word forms. (Questions 43–50)</div>
+      <div class="quiz-container" id="part5-questions-container"></div>
+    `;
+    panelContainer.appendChild(panelDiv);
+    
+    const container = document.getElementById('part5-questions-container');
+    quizData.part5.forEach((q, qIndex) => {
+      const card = document.createElement('div');
+      card.className = 'input-quiz-card';
+      
+      const userVal = quizState.part5[qIndex] || '';
+      const disabledAttr = isGraded ? 'disabled' : '';
+      
+      let feedbackHTML = '';
+      if (isGraded) {
+        const isCorrect = checkTextAnswer(userVal, q.answer);
+        card.classList.add(isCorrect ? 'correct' : 'incorrect');
+        feedbackHTML = isCorrect 
+          ? `<div class="input-feedback correct">✨ Correct!</div>`
+          : `<div class="input-feedback incorrect">❌ Incorrect.<br><strong>Correct Answer:</strong> ${q.answer}</div>`;
+      }
+      
+      card.innerHTML = `
+        <div class="input-quiz-sentence"><strong>${q.qNumber}.</strong> Incorrect: <em>"${q.sentence}"</em></div>
+        <input type="text" class="input-quiz-field" placeholder="Type correct sentence..." value="${userVal.replace(/"/g, '&quot;')}" oninput="updatePart5Input(${qIndex}, this.value)" ${disabledAttr}>
+        ${feedbackHTML}
+      `;
+      container.appendChild(card);
+    });
+    
+  } else if (currentPart === 6) {
+    panelDiv.innerHTML = `
+      <div class="quiz-part-title">Part 6: Complete with the Correct Word Form</div>
+      <div class="quiz-part-desc">Complete the sentence using the correct form of the word in brackets. (Questions 51–56)</div>
+      <div class="quiz-container" id="part6-questions-container"></div>
+    `;
+    panelContainer.appendChild(panelDiv);
+    
+    const container = document.getElementById('part6-questions-container');
+    quizData.part6.forEach((q, qIndex) => {
+      const card = document.createElement('div');
+      card.className = 'input-quiz-card';
+      
+      const userVal = quizState.part6[qIndex] || '';
+      const disabledAttr = isGraded ? 'disabled' : '';
+      
+      let feedbackHTML = '';
+      if (isGraded) {
+        const isCorrect = checkWordAnswer(userVal, q.answer);
+        card.classList.add(isCorrect ? 'correct' : 'incorrect');
+        feedbackHTML = isCorrect 
+          ? `<div class="input-feedback correct">✨ Correct!</div>`
+          : `<div class="input-feedback incorrect">❌ Incorrect. The correct form is: <strong>${q.answer}</strong></div>`;
+      }
+      
+      card.innerHTML = `
+        <div class="input-quiz-sentence"><strong>${q.qNumber}.</strong> ${q.sentence.replace('_______', `<u>${userVal || '_______'}</u>`)} (${q.bracket})</div>
+        <input type="text" class="input-quiz-field" style="max-width: 300px;" placeholder="Type correct word..." value="${userVal.replace(/"/g, '&quot;')}" oninput="updatePart6Input(${qIndex}, this.value)" ${disabledAttr}>
+        ${feedbackHTML}
+      `;
+      container.appendChild(card);
+    });
+    
+  } else if (currentPart === 7) {
+    panelDiv.innerHTML = `
+      <div class="quiz-part-title">Part 7: Short Writing Task</div>
+      <div class="quiz-part-desc">${quizData.part7.instruction}</div>
+      <div class="quiz-container" id="part7-questions-container"></div>
+    `;
+    panelContainer.appendChild(panelDiv);
+    
+    const container = document.getElementById('part7-questions-container');
+    const wordsList = quizData.part7.words;
+    
+    for (let sIndex = 0; sIndex < 5; sIndex++) {
+      const item = quizState.part7[sIndex] || { word: "", text: "" };
+      const disabledAttr = isGraded ? 'disabled' : '';
+      
+      let optionsHTML = `<option value="">-- Select target word --</option>`;
+      wordsList.forEach(w => {
+        const selectedAttr = (item.word === w) ? 'selected' : '';
+        optionsHTML += `<option value="${w}" ${selectedAttr}>${w}</option>`;
+      });
+      
+      let feedbackHTML = '';
+      if (isGraded) {
+        const itemVal = quizState.part7[sIndex] || { word: '', text: '' };
+        const isOk = checkSentenceUsage(itemVal.text, itemVal.word);
+        feedbackHTML = isOk
+          ? `<div class="input-feedback correct">✨ Sentence submitted successfully using "${itemVal.word}"!</div>`
+          : `<div class="input-feedback incorrect">❌ Sentence should be at least 15 characters and contain the word "${itemVal.word}" case-insensitively.</div>`;
+      }
+      
+      const card = document.createElement('div');
+      card.className = 'writing-task-item';
+      card.innerHTML = `
+        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+          <strong>Sentence ${sIndex + 1}:</strong>
+          <select class="theme-select" style="margin: 0; padding: 0.4rem 0.8rem; font-size: 0.9rem;" onchange="updatePart7Word(${sIndex}, this.value)" ${disabledAttr}>
+            ${optionsHTML}
+          </select>
+        </div>
+        <textarea class="writing-task-textarea" placeholder="Write your sentence here..." oninput="updatePart7Input(${sIndex}, this.value)" ${disabledAttr}>${item.text || ''}</textarea>
+        ${feedbackHTML}
+      `;
+      container.appendChild(card);
+    }
+  } else if (currentPart === 'results') {
+    renderQuizResults(module, panelDiv);
+    panelContainer.appendChild(panelDiv);
+  }
+}
+
+function selectCustomPart1Option(qIndex, oIndex) {
+  if (state.customQuizState.graded) return;
+  state.customQuizState.part1[qIndex] = oIndex;
+  
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  renderActiveQuizPanel(module);
+}
+
+function selectCustomPart4Option(qIndex, oIndex) {
+  if (state.customQuizState.graded) return;
+  state.customQuizState.part4[qIndex] = oIndex;
+  
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  renderActiveQuizPanel(module);
+}
+
+function updatePart5Input(qIndex, val) {
+  if (state.customQuizState.graded) return;
+  state.customQuizState.part5[qIndex] = val;
+}
+
+function updatePart6Input(qIndex, val) {
+  if (state.customQuizState.graded) return;
+  state.customQuizState.part6[qIndex] = val;
+}
+
+function updatePart7Word(sIndex, val) {
+  if (state.customQuizState.graded) return;
+  if (!state.customQuizState.part7[sIndex]) {
+    state.customQuizState.part7[sIndex] = { word: "", text: "" };
+  }
+  state.customQuizState.part7[sIndex].word = val;
+}
+
+function updatePart7Input(sIndex, val) {
+  if (state.customQuizState.graded) return;
+  if (!state.customQuizState.part7[sIndex]) {
+    state.customQuizState.part7[sIndex] = { word: "", text: "" };
+  }
+  state.customQuizState.part7[sIndex].text = val;
+}
+
+// Matching Part 2
+function renderPart2Board(module) {
+  const container = document.getElementById('part2-board-container');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  const quizData = module.vocabQuizData;
+  const quizState = state.customQuizState;
+  const isGraded = quizState.graded;
+  
+  const board = document.createElement('div');
+  board.className = 'matching-board';
+  
+  quizData.part2.forEach((item, index) => {
+    const word = item.word;
+    const qNum = 13 + index;
+    const matchedMeaning = quizState.part2[word];
+    const isRowCorrect = isGraded && (matchedMeaning === item.meaning);
+    
+    let rowClass = '';
+    if (isGraded) {
+      rowClass = isRowCorrect ? 'correct' : 'incorrect';
+    }
+    
+    let slotContent = '';
+    if (matchedMeaning) {
+      const escPill = matchedMeaning.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      const showRemoveBtn = isGraded ? '' : `<span class="matching-pill-remove" onclick="removePart2Match('${word.replace(/'/g, "\\'")}', event)">&times;</span>`;
+      slotContent = `
+        <div class="matching-pill placed">
+          <span class="option-text">${matchedMeaning}</span>
+          ${showRemoveBtn}
+        </div>
+      `;
+    } else {
+      slotContent = `<span class="matching-slot-placeholder">${isGraded ? '(Empty)' : 'Click definition below, then click here to match'}</span>`;
+    }
+    
+    let correctAnsHTML = '';
+    if (isGraded && !isRowCorrect) {
+      correctAnsHTML = `<span class="matching-correct-ans">Correct definition: (${item.correctLetter}) ${item.meaning}</span>`;
+    }
+    
+    const row = document.createElement('div');
+    row.className = `matching-row ${rowClass}`;
+    
+    const escWord = word.replace(/'/g, "\\'");
+    row.innerHTML = `
+      <div class="matching-word">${qNum}. ${word}</div>
+      <div class="matching-slot" id="p2-slot-${index}" onclick="placePart2Pill('${escWord}')"
+           ondragover="event.preventDefault(); this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handlePart2Drop(event, '${escWord}')">
+        ${slotContent}
+      </div>
+    `;
+    
+    if (correctAnsHTML) {
+      const rowWrapper = document.createElement('div');
+      rowWrapper.appendChild(row);
+      const correction = document.createElement('div');
+      correction.innerHTML = correctAnsHTML;
+      correction.style.paddingLeft = '150px';
+      rowWrapper.appendChild(correction);
+      board.appendChild(rowWrapper);
+    } else {
+      board.appendChild(row);
+    }
+  });
+  
+  container.appendChild(board);
+  
+  // Render Pills Pool
+  if (!isGraded) {
+    const poolTitle = document.createElement('h4');
+    poolTitle.textContent = 'Definitions Pool';
+    poolTitle.style.marginBottom = '0.5rem';
+    container.appendChild(poolTitle);
+    
+    const pool = document.createElement('div');
+    pool.className = 'matching-pills-pool';
+    
+    state.customQuizPills.part2.forEach((meaning) => {
+      const isPlaced = Object.values(quizState.part2).includes(meaning);
+      if (isPlaced) return;
+      
+      const pill = document.createElement('div');
+      pill.className = 'matching-pill';
+      if (state.selectedPill === meaning) {
+        pill.classList.add('selected');
+      }
+      
+      const escMeaning = meaning.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      pill.draggable = true;
+      pill.setAttribute('ondragstart', `handlePart2DragStart(event, '${escMeaning}')`);
+      pill.onclick = () => selectPart2Pill(meaning);
+      pill.innerHTML = `<span class="option-text">${meaning}</span>`;
+      pool.appendChild(pill);
+    });
+    
+    container.appendChild(pool);
+  }
+}
+
+function selectPart2Pill(meaning) {
+  if (state.customQuizState.graded) return;
+  if (state.selectedPill === meaning) {
+    state.selectedPill = null;
+  } else {
+    state.selectedPill = meaning;
+  }
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  renderPart2Board(module);
+}
+
+function placePart2Pill(word) {
+  if (state.customQuizState.graded) return;
+  
+  if (state.selectedPill) {
+    state.customQuizState.part2[word] = state.selectedPill;
+    state.selectedPill = null;
+  } else if (state.customQuizState.part2[word]) {
+    delete state.customQuizState.part2[word];
+  }
+  
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  renderPart2Board(module);
+}
+
+function removePart2Match(word, ev) {
+  if (ev) ev.stopPropagation();
+  if (state.customQuizState.graded) return;
+  
+  delete state.customQuizState.part2[word];
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  renderPart2Board(module);
+}
+
+function handlePart2DragStart(ev, meaning) {
+  if (state.customQuizState.graded) return;
+  ev.dataTransfer.setData("text/plain", meaning);
+}
+
+function handlePart2Drop(ev, word) {
+  ev.preventDefault();
+  const slot = ev.currentTarget;
+  slot.classList.remove('drag-over');
+  if (state.customQuizState.graded) return;
+  
+  const meaning = ev.dataTransfer.getData("text/plain");
+  if (!meaning) return;
+  
+  state.customQuizState.part2[word] = meaning;
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  renderPart2Board(module);
+}
+
+// Matching Part 3
+function renderPart3Board(module) {
+  const container = document.getElementById('part3-board-container');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  const quizData = module.vocabQuizData;
+  const quizState = state.customQuizState;
+  const isGraded = quizState.graded;
+  
+  const board = document.createElement('div');
+  board.className = 'matching-board';
+  
+  quizData.part3.forEach((item, index) => {
+    const word = item.word;
+    const qNum = 25 + index;
+    const matchedCollocation = quizState.part3[word];
+    const isRowCorrect = isGraded && (matchedCollocation === item.collocation);
+    
+    let rowClass = '';
+    if (isGraded) {
+      rowClass = isRowCorrect ? 'correct' : 'incorrect';
+    }
+    
+    let slotContent = '';
+    if (matchedCollocation) {
+      const showRemoveBtn = isGraded ? '' : `<span class="matching-pill-remove" onclick="removePart3Match('${word.replace(/'/g, "\\'")}', event)">&times;</span>`;
+      slotContent = `
+        <div class="matching-pill placed">
+          <span class="option-text">${matchedCollocation}</span>
+          ${showRemoveBtn}
+        </div>
+      `;
+    } else {
+      slotContent = `<span class="matching-slot-placeholder">${isGraded ? '(Empty)' : 'Click collocation below, then click here to match'}</span>`;
+    }
+    
+    let correctAnsHTML = '';
+    if (isGraded && !isRowCorrect) {
+      correctAnsHTML = `<span class="matching-correct-ans">Correct collocation: <strong>${word} ${item.collocation}</strong></span>`;
+    }
+    
+    const row = document.createElement('div');
+    row.className = `matching-row ${rowClass}`;
+    
+    const escWord = word.replace(/'/g, "\\'");
+    row.innerHTML = `
+      <div class="matching-word">${qNum}. ${word}</div>
+      <div class="matching-slot" id="part3-slot-${index}" onclick="placePart3Pill('${escWord}')"
+           ondragover="event.preventDefault(); this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handlePart3Drop(event, '${escWord}')">
+        ${slotContent}
+      </div>
+    `;
+    
+    if (correctAnsHTML) {
+      const rowWrapper = document.createElement('div');
+      rowWrapper.appendChild(row);
+      const correction = document.createElement('div');
+      correction.innerHTML = correctAnsHTML;
+      correction.style.paddingLeft = '150px';
+      rowWrapper.appendChild(correction);
+      board.appendChild(rowWrapper);
+    } else {
+      board.appendChild(row);
+    }
+  });
+  
+  container.appendChild(board);
+  
+  // Render Pills Pool
+  if (!isGraded) {
+    const poolTitle = document.createElement('h4');
+    poolTitle.textContent = 'Collocations Pool';
+    poolTitle.style.marginBottom = '0.5rem';
+    container.appendChild(poolTitle);
+    
+    const pool = document.createElement('div');
+    pool.className = 'matching-pills-pool';
+    
+    state.customQuizPills.part3.forEach((collocation) => {
+      const isPlaced = Object.values(quizState.part3).includes(collocation);
+      if (isPlaced) return;
+      
+      const pill = document.createElement('div');
+      pill.className = 'matching-pill';
+      if (state.selectedPill === collocation) {
+        pill.classList.add('selected');
+      }
+      
+      const escCollocation = collocation.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      pill.draggable = true;
+      pill.setAttribute('ondragstart', `handlePart3DragStart(event, '${escCollocation}')`);
+      pill.onclick = () => selectPart3Pill(collocation);
+      pill.innerHTML = `<span class="option-text">${collocation}</span>`;
+      pool.appendChild(pill);
+    });
+    
+    container.appendChild(pool);
+  }
+}
+
+function selectPart3Pill(collocation) {
+  if (state.customQuizState.graded) return;
+  if (state.selectedPill === collocation) {
+    state.selectedPill = null;
+  } else {
+    state.selectedPill = collocation;
+  }
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  renderPart3Board(module);
+}
+
+function placePart3Pill(word) {
+  if (state.customQuizState.graded) return;
+  
+  if (state.selectedPill) {
+    state.customQuizState.part3[word] = state.selectedPill;
+    state.selectedPill = null;
+  } else if (state.customQuizState.part3[word]) {
+    delete state.customQuizState.part3[word];
+  }
+  
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  renderPart3Board(module);
+}
+
+function removePart3Match(word, ev) {
+  if (ev) ev.stopPropagation();
+  if (state.customQuizState.graded) return;
+  
+  delete state.customQuizState.part3[word];
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  renderPart3Board(module);
+}
+
+function handlePart3DragStart(ev, collocation) {
+  if (state.customQuizState.graded) return;
+  ev.dataTransfer.setData("text/plain", collocation);
+}
+
+function handlePart3Drop(ev, word) {
+  ev.preventDefault();
+  const slot = ev.currentTarget;
+  slot.classList.remove('drag-over');
+  if (state.customQuizState.graded) return;
+  
+  const collocation = ev.dataTransfer.getData("text/plain");
+  if (!collocation) return;
+  
+  state.customQuizState.part3[word] = collocation;
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  renderPart3Board(module);
+}
+
+// Smart grading text checkers
+function checkTextAnswer(userVal, correctVal) {
+  if (!userVal) return false;
+  const clean = str => str.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g,"").replace(/\s+/g," ").trim();
+  return clean(userVal) === clean(correctVal);
+}
+
+function checkWordAnswer(userVal, correctVal) {
+  if (!userVal) return false;
+  return userVal.toLowerCase().trim() === correctVal.toLowerCase().trim();
+}
+
+function checkSentenceUsage(sentence, word) {
+  if (!sentence || !word) return false;
+  const cleanSentence = sentence.toLowerCase().trim();
+  const cleanWord = word.toLowerCase().trim();
+  return cleanSentence.includes(cleanWord) && cleanSentence.length >= 15;
+}
+
+function gradeEntireQuiz() {
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  if (!module || !module.vocabQuizData) return;
+  
+  const quizData = module.vocabQuizData;
+  const quizState = state.customQuizState;
+  
+  // 1. Part 1
+  let p1Score = 0;
+  quizData.part1.forEach((q, index) => {
+    if (quizState.part1[index] === q.answer) {
+      p1Score++;
+    }
+  });
+  
+  // 2. Part 2
+  let p2Score = 0;
+  quizData.part2.forEach(item => {
+    if (quizState.part2[item.word] === item.meaning) {
+      p2Score++;
+    }
+  });
+  
+  // 3. Part 3
+  let p3Score = 0;
+  quizData.part3.forEach(item => {
+    if (quizState.part3[item.word] === item.collocation) {
+      p3Score++;
+    }
+  });
+  
+  // 4. Part 4
+  let p4Score = 0;
+  quizData.part4.forEach((q, index) => {
+    if (quizState.part4[index] === q.answer) {
+      p4Score++;
+    }
+  });
+  
+  // 5. Part 5
+  let p5Score = 0;
+  quizData.part5.forEach((q, index) => {
+    if (checkTextAnswer(quizState.part5[index], q.answer)) {
+      p5Score++;
+    }
+  });
+  
+  // 6. Part 6
+  let p6Score = 0;
+  quizData.part6.forEach((q, index) => {
+    if (checkWordAnswer(quizState.part6[index], q.answer)) {
+      p6Score++;
+    }
+  });
+  
+  // 7. Part 7
+  let p7Score = 0;
+  for (let sIndex = 0; sIndex < 5; sIndex++) {
+    const item = quizState.part7[sIndex] || { word: "", text: "" };
+    if (checkSentenceUsage(item.text, item.word)) {
+      p7Score++;
+    }
+  }
+  
+  quizState.scores = {
+    part1: p1Score,
+    part2: p2Score,
+    part3: p3Score,
+    part4: p4Score,
+    part5: p5Score,
+    part6: p6Score,
+    part7: p7Score
+  };
+  
+  quizState.graded = true;
+  goToQuizPart('results');
+}
+
+function renderQuizResults(module, containerDiv) {
+  const quizState = state.customQuizState;
+  const scores = quizState.scores;
+  
+  const totalCorrect = scores.part1 + scores.part2 + scores.part3 + scores.part4 + scores.part5 + scores.part6 + scores.part7;
+  const totalQuestions = 61; // 12 + 12 + 10 + 8 + 8 + 6 + 5
+  const percent = Math.round((totalCorrect / totalQuestions) * 100);
+  
+  const radius = 70;
+  const circ = 2 * Math.PI * radius;
+  const dashoffset = circ - (percent / 100) * circ;
+  
+  let feedbackMessage = '';
+  if (percent >= 90) {
+    feedbackMessage = '🌟 Outstanding! You have mastered the C1 vocabulary for this module. Excellent work!';
+  } else if (percent >= 75) {
+    feedbackMessage = '👍 Good job! You have a solid grasp of these words, but a quick review of your mistakes could help you achieve perfection.';
+  } else if (percent >= 50) {
+    feedbackMessage = '📚 Keep practicing! Re-read the story and the collocations lists to reinforce your vocabulary knowledge.';
+  } else {
+    feedbackMessage = '⚠️ Let\'s try that again! Go review the study cards and retry the quiz to master these advanced terms.';
+  }
+  
+  containerDiv.innerHTML = `
+    <div class="results-dashboard">
+      <div class="score-circle-container">
+        <svg width="160" height="160" viewBox="0 0 160 160">
+          <circle cx="80" cy="80" r="${radius}" class="score-ring-bg" />
+          <circle cx="80" cy="80" r="${radius}" class="score-ring-fill"
+                  style="stroke-dasharray: ${circ}; stroke-dashoffset: ${dashoffset};" />
+        </svg>
+        <div class="score-text">
+          ${percent}%
+          <span>${totalCorrect} / ${totalQuestions} Correct</span>
+        </div>
+      </div>
+      
+      <div class="result-feedback-msg">${feedbackMessage}</div>
+      
+      <div class="results-summary-grid">
+        <div class="result-card">
+          <span class="result-card-title">Part 1 (Best Word)</span>
+          <span class="result-card-val">${scores.part1} / 12</span>
+        </div>
+        <div class="result-card">
+          <span class="result-card-title">Part 2 (Definitions)</span>
+          <span class="result-card-val">${scores.part2} / 12</span>
+        </div>
+        <div class="result-card">
+          <span class="result-card-title">Part 3 (Collocations)</span>
+          <span class="result-card-val">${scores.part3} / 10</span>
+        </div>
+        <div class="result-card">
+          <span class="result-card-title">Part 4 (Synonyms)</span>
+          <span class="result-card-val">${scores.part4} / 8</span>
+        </div>
+        <div class="result-card">
+          <span class="result-card-title">Part 5 (Correction)</span>
+          <span class="result-card-val">${scores.part5} / 8</span>
+        </div>
+        <div class="result-card">
+          <span class="result-card-title">Part 6 (Word Form)</span>
+          <span class="result-card-val">${scores.part6} / 6</span>
+        </div>
+        <div class="result-card">
+          <span class="result-card-title">Part 7 (Writing)</span>
+          <span class="result-card-val">${scores.part7} / 5</span>
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <button class="cta-button" onclick="reviewCustomQuiz()" style="background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-primary);">
+          🔍 Review Answers
+        </button>
+        <button class="cta-button" onclick="retryCustomQuiz()">
+          🔁 Retry Quiz
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function reviewCustomQuiz() {
+  goToQuizPart(1);
+}
+
+function retryCustomQuiz() {
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  if (!module) return;
+  
+  state.customQuizState = null;
+  renderVocabQuizSection(module);
 }
 
 function renderQuizTab(module) {
