@@ -1200,6 +1200,15 @@ function onYouglishFetchDone(event) {
     if (controlsEl) controlsEl.style.display = 'flex';
     state.youglishTotalTracks = event.totalResult;
     updateYouGlishTrackInfo();
+
+    // Remove scrollbar from the YouGlish iframe — set scrolling=no and overflow:hidden
+    setTimeout(() => {
+      const ygIframe = widgetEl ? widgetEl.querySelector('iframe') : null;
+      if (ygIframe) {
+        ygIframe.setAttribute('scrolling', 'no');
+        ygIframe.style.overflow = 'hidden';
+      }
+    }, 300);
   }
 }
 
