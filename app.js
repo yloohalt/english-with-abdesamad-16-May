@@ -1091,9 +1091,31 @@ function loadYouGlish(word) {
 
 function getYouglishThemeColors() {
   const isDark = document.body.classList.contains('dark-mode');
-  if (isDark) {
+  const bodyTheme = document.body.getAttribute('data-theme');
+  
+  if (bodyTheme === 'emerald') {
     return {
-      backgroundColor: "#1c0d2e",
+      backgroundColor: "#011c16",
+      textColor: "#a7f3d0",
+      captionColor: "#10b981",
+      markerColor: "rgba(16, 185, 129, 0.15)",
+      queryColor: "#f0fdf4",
+      linkColor: "#10b981",
+      titleColor: "#a7f3d0"
+    };
+  } else if (bodyTheme === 'gold') {
+    return {
+      backgroundColor: "#121214",
+      textColor: "#e4e4e7",
+      captionColor: "#eab308",
+      markerColor: "rgba(234, 179, 8, 0.15)",
+      queryColor: "#fef08a",
+      linkColor: "#eab308",
+      titleColor: "#e4e4e7"
+    };
+  } else if (isDark) {
+    return {
+      backgroundColor: "#0f081d",
       textColor: "#cbd5e1",
       captionColor: "#a855f7",
       markerColor: "rgba(168, 85, 247, 0.15)",
@@ -1103,7 +1125,7 @@ function getYouglishThemeColors() {
     };
   } else {
     return {
-      backgroundColor: "#ffffff",
+      backgroundColor: "#f1f5f9",
       textColor: "#475569",
       captionColor: "#0284c7",
       markerColor: "rgba(2, 132, 199, 0.15)",
