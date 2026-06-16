@@ -920,6 +920,16 @@ function openKeywordPopup(wordName) {
       </div>
     </div>
 
+    <div>
+      <div class="word-card-section-title">Visualization</div>
+      <img
+        class="word-card-image"
+        src="Images/Lesson ${module.id}/${v.word}.png"
+        alt="${v.word} visualization"
+        onerror="this.style.display='none'"
+      />
+    </div>
+
     <!-- Dedicated YouGlish Section (Toggled via JS) -->
     <div id="yg-section-wrapper" style="display: none;">
       <div class="word-card-section-title">Pronunciation Video</div>

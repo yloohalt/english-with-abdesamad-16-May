@@ -1392,6 +1392,17 @@ body.dark-mode .story-keyword:hover {
   font-weight: 500;
 }
 
+/* Real word visualization image */
+.word-card-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 16px;
+  display: block;
+  border: 1px solid var(--card-border);
+  background: #000;
+}
+
 /* --- Premium Story Audio Player --- */
 
 .story-player-bar {
