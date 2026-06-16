@@ -1045,6 +1045,11 @@ function loadYouGlish(word) {
   const accent = state.youglishSettings.accent === 'all' ? '' : state.youglishSettings.accent;
   const colors = getYouglishThemeColors();
   
+  // Get active player container sizing to pass to YouGlish (prevents iframe internal layout cut-offs)
+  const container = document.getElementById('yg-player-container');
+  const width = container ? container.clientWidth : (window.innerWidth <= 480 ? 320 : 500);
+  const height = container ? container.clientHeight : (window.innerWidth <= 480 ? 265 : 315);
+  
   // Fallback timer to hide loader if browser blocks API callback events
   state.youglishFallbackTimeout = setTimeout(() => {
     console.log("YouGlish load fallback triggered (likely due to file:// origin sandbox).");
@@ -1061,8 +1066,9 @@ function loadYouGlish(word) {
   try {
     // Re-instantiate widget because container was replaced dynamically
     // Use components: 80 (shows player + speed controls + control buttons; hides native caption, search box and title)
-    // Omit width property so it defaults to "expand to all its container width" responsively
     state.youglishWidget = new YG.Widget("yg-widget-element", {
+      width: width,
+      height: height,
       components: 80,
       backgroundColor: colors.backgroundColor,
       linkColor: colors.linkColor,
