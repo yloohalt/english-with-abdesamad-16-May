@@ -1388,16 +1388,19 @@ function _buildMatchUI(container, partNum, items, quizState, partKey, valueKey, 
   shuffledItems.forEach(item => {
     const word = item.word;
     const isMatched = quizState[partKey][word] && quizState[partKey][word].isCorrect;
-    if (isMatched) return; // already correctly matched, don't show in left pool
 
     const card = document.createElement('div');
-    card.className = 'drag-match-card';
+    card.className = 'drag-match-card' + (isMatched ? ' matched' : '');
     card.id = `match-card-${partNum}-${word.replace(/[^a-zA-Z0-9]/g,'_')}`;
-    card.draggable = true;
     card.dataset.word = word;
     card.dataset.part = partNum;
-    card.innerHTML = `<span>${word}</span><span class="drag-match-check" style="opacity:0">✅</span>`;
-    _addMatchCardDragListeners(card, partNum);
+    card.innerHTML = `<span>${word}</span><span class="drag-match-check" style="opacity:${isMatched ? 1 : 0}">✅</span>`;
+    if (!isMatched) {
+      card.draggable = true;
+      _addMatchCardDragListeners(card, partNum);
+    } else {
+      card.draggable = false;
+    }
     leftCol.appendChild(card);
   });
 
@@ -1566,11 +1569,16 @@ function _handleMatchDrop(word, zone, partNum, partKey, valueKey, items) {
       quizState.part3[targetWord] = { collocation: valueToStore, isCorrect: true };
     }
 
-    // Remove matched card from left column
+    // Style the card as matched (keep it in DOM so SVG line can connect to it)
     const cardEl = document.getElementById(cardId);
-    if (cardEl) cardEl.remove();
+    if (cardEl) {
+      cardEl.classList.add('matched');
+      cardEl.draggable = false;
+      const checkIcon = cardEl.querySelector('.drag-match-check');
+      if (checkIcon) checkIcon.style.opacity = '1';
+    }
 
-    // Draw connector line
+    // Draw connector line (card is still in DOM)
     const connections = state[`_matchConnections_p${partNum}`] || [];
     connections.push({ cardId, zoneId });
     state[`_matchConnections_p${partNum}`] = connections;

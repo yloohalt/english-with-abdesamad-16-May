@@ -1271,6 +1271,15 @@ body.dark-mode .level-card.active-level:hover {
   transform: scale(.97);
 }
 
+.drag-match-card.matched {
+  background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05));
+  border-color: #10b981;
+  color: #10b981;
+  cursor: default;
+  pointer-events: none;
+  animation: matchPop .45s cubic-bezier(.36,.07,.19,.97);
+}
+
 /* Middle column: SVG connector */
 .drag-match-svg-col {
   min-height: 200px;
