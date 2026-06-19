@@ -636,6 +636,7 @@ function renderVocabQuizSection(module) {
     if (!state.customQuizState || state.customQuizActiveModuleId !== module.id) {
       state.customQuizActiveModuleId = module.id;
       state.activeCustomQuizPart = 1;
+      state.carouselQIndex = 0;
       state.selectedPill = null;
       state.customQuizState = {
         part1: {},
@@ -791,115 +792,224 @@ function renderCustomQuiz(module) {
     return;
   }
 
-  // ── CAROUSEL MODE ──
-  let progressPercent = 0;
-  if (currentPart === 'results') {
-    progressPercent = 100;
-  } else {
-    progressPercent = Math.round(((currentPart - 1) / totalParts) * 100);
-    if (progressPercent === 0) progressPercent = 5;
-  }
-
-  let tabsHTML = '';
-  for (let i = 1; i <= totalParts; i++) {
-    const activeClass = (currentPart === i) ? 'active' : '';
-    const completedClass = (isGraded || Object.keys(quizState[`part${i}`] || {}).length > 0) ? 'completed' : '';
-    tabsHTML += `
-      <button class="part-tab-btn ${activeClass} ${completedClass}" onclick="goToQuizPart(${i})">
-        Part ${i}
-      </button>
-    `;
-  }
-  if (isGraded) {
-    const activeClass = (currentPart === 'results') ? 'active' : '';
-    tabsHTML += `
-      <button class="part-tab-btn ${activeClass} completed" id="results-tab-btn" onclick="goToQuizPart('results')">
-        Results
-      </button>
-    `;
-  }
+  // ── CAROUSEL MODE ── (one question at a time)
+  const slides = _buildCarouselSlides(module);
+  const totalSlides = slides.length;
+  const qIdx = Math.max(0, Math.min(state.carouselQIndex || 0, totalSlides - 1));
+  state.carouselQIndex = qIdx;
+  const progressPct = Math.round(((qIdx + 1) / totalSlides) * 100);
 
   quizContainer.innerHTML = `
     <div class="vocab-quiz-wizard">
       <div class="quiz-wizard-header">
         ${toggleHTML}
-        <div class="quiz-part-tabs">${tabsHTML}</div>
-        <div class="quiz-progress-bar-container">
-          <div class="quiz-progress-bar" style="width: ${progressPercent}%;"></div>
+        <div class="carousel-progress-row">
+          <span class="carousel-q-counter">Question ${qIdx + 1} <span style="opacity:.6">of ${totalSlides}</span></span>
+          <div class="quiz-progress-bar-container" style="flex:1;">
+            <div class="quiz-progress-bar" style="width:${progressPct}%;"></div>
+          </div>
         </div>
       </div>
-      <div class="quiz-panels-container" id="quiz-panels-container">
-        <!-- Rendered dynamically -->
-      </div>
+      <div class="quiz-panels-container" id="quiz-panels-container"></div>
       <div class="quiz-wizard-footer">
-        <button class="quiz-nav-btn prev-btn" id="quiz-prev-btn" onclick="prevQuizPart()">Previous Part</button>
-        <button class="quiz-nav-btn next-btn" id="quiz-next-btn" onclick="nextQuizPart()">Next Part</button>
-        <button class="quiz-nav-btn submit-all-btn" id="quiz-submit-btn" onclick="gradeEntireQuiz()" style="display: none;">Submit Quiz & Grade</button>
+        <button class="quiz-nav-btn prev-btn" onclick="prevCarouselQ()" ${qIdx === 0 ? 'disabled' : ''}>← Previous</button>
+        <span class="carousel-dot-row" id="carousel-dot-row"></span>
+        ${qIdx === totalSlides - 1
+          ? (isGraded
+              ? `<button class="quiz-nav-btn submit-all-btn" onclick="goToQuizPart('results')">View Results</button>`
+              : `<button class="quiz-nav-btn submit-all-btn" onclick="gradeEntireQuiz()">Submit & Grade</button>`)
+          : `<button class="quiz-nav-btn next-btn" onclick="nextCarouselQ()">Next →</button>`
+        }
       </div>
     </div>
   `;
 
-  renderActiveQuizPanel(module);
-  updateQuizNavButtons();
+  _renderCarouselSlide(module, slides, qIdx);
+}
+
+// ── CAROUSEL HELPERS ──
+
+function _buildCarouselSlides(module) {
+  const qd = module.vocabQuizData;
+  const slides = [];
+  // Part 1: one MCQ per slide
+  qd.part1.forEach((q, i) => slides.push({ type: 'mcq', part: 1, qIndex: i, q }));
+  // Part 2: full matching board as one slide
+  slides.push({ type: 'matching', part: 2 });
+  // Part 3: full matching board as one slide
+  slides.push({ type: 'matching', part: 3 });
+  // Part 4: one MCQ per slide
+  qd.part4.forEach((q, i) => slides.push({ type: 'mcq', part: 4, qIndex: i, q }));
+  // Part 5: one input per slide
+  qd.part5.forEach((q, i) => slides.push({ type: 'input5', part: 5, qIndex: i, q }));
+  // Part 6: one input per slide
+  qd.part6.forEach((q, i) => slides.push({ type: 'input6', part: 6, qIndex: i, q }));
+  // Part 7: one writing task per slide
+  for (let i = 0; i < 5; i++) slides.push({ type: 'writing', part: 7, sIndex: i });
+  return slides;
+}
+
+function _renderCarouselSlide(module, slides, idx) {
+  const container = document.getElementById('quiz-panels-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const slide = slides[idx];
+  const qs = state.customQuizState;
+  const qd = module.vocabQuizData;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'quiz-panel active carousel-slide-wrap';
+
+  if (slide.type === 'mcq') {
+    const partKey = `part${slide.part}`;
+    const q = slide.q;
+    const ansData = qs[partKey][slide.qIndex];
+    const isAnswered = ansData !== undefined;
+    const handlerFn = slide.part === 1 ? 'selectCustomPart1Option' : 'selectCustomPart4Option';
+
+    let choicesHTML = '';
+    q.choices.forEach((choice, oIndex) => {
+      let optClass = '';
+      if (isAnswered) {
+        if (oIndex === q.answer) optClass = 'correct';
+        else if (ansData.selected === oIndex) optClass = 'incorrect';
+      }
+      choicesHTML += `<div class="quiz-option ${optClass} ${isAnswered ? 'disabled' : ''}" onclick="${handlerFn}(${slide.qIndex}, ${oIndex})"><span class="option-marker">${String.fromCharCode(65+oIndex)}</span><span class="option-text">${choice}</span></div>`;
+    });
+
+    const feedbackHTML = isAnswered
+      ? (ansData.isCorrect
+          ? `<div class="quiz-feedback correct"><strong>✨ Correct!</strong> "${q.choices[q.answer]}" is correct.</div>`
+          : `<div class="quiz-feedback incorrect"><strong>❌ Incorrect.</strong> The correct answer is "${q.choices[q.answer]}".</div>`)
+      : '';
+
+    wrap.innerHTML = `
+      <div class="carousel-part-label">Part ${slide.part}</div>
+      <div class="quiz-question">${q.qNumber}. ${q.question}</div>
+      <div class="quiz-options ${isAnswered ? 'answered' : ''}">${choicesHTML}</div>
+      ${feedbackHTML}
+    `;
+
+  } else if (slide.type === 'matching') {
+    const partNum = slide.part;
+    const containerId = `part${partNum}-board-container`;
+    wrap.innerHTML = `
+      <div class="carousel-part-label">Part ${partNum}: ${partNum === 2 ? 'Match the Word to Its Meaning' : 'Collocation Matching'}</div>
+      <div class="quiz-part-desc">${partNum === 2 ? 'Drag each word card onto its correct definition drop zone.' : 'Drag each word card onto its correct collocation.'}</div>
+      <div id="${containerId}"></div>
+    `;
+    container.appendChild(wrap);
+    if (partNum === 2) renderPart2Board(module);
+    else renderPart3Board(module);
+    return;
+
+  } else if (slide.type === 'input5') {
+    const q = slide.q;
+    const ansData = qs.part5[slide.qIndex];
+    const isAnswered = ansData && ansData.checked;
+    const userVal = isAnswered ? ansData.text : (ansData || '');
+    if (isAnswered) wrap.classList.add(ansData.isCorrect ? 'correct' : 'incorrect');
+    const feedbackHTML = isAnswered ? (ansData.isCorrect ? `<div class="input-feedback correct">✨ Correct!</div>` : `<div class="input-feedback incorrect">❌ Incorrect.<br><strong>Correct Answer:</strong> ${q.answer}</div>`) : '';
+    const inputHTML = isAnswered
+      ? `<input type="text" class="input-quiz-field" value="${userVal.replace(/"/g,'&quot;')}" disabled>`
+      : `<div style="display:flex;gap:.8rem;align-items:center;width:100%;"><input type="text" class="input-quiz-field" id="p5-input-${slide.qIndex}" placeholder="Type correct sentence..." value="${userVal.replace(/"/g,'&quot;')}"><button class="quiz-nav-btn check-btn" style="margin:0;padding:.75rem 1.2rem;flex-shrink:0;" onclick="checkPart5Answer(${slide.qIndex})">Check</button></div>`;
+    wrap.innerHTML = `
+      <div class="carousel-part-label">Part 5</div>
+      <div class="input-quiz-sentence"><strong>${q.qNumber}.</strong> Incorrect: <em>"${q.sentence}"</em></div>
+      ${inputHTML}${feedbackHTML}
+    `;
+
+  } else if (slide.type === 'input6') {
+    const q = slide.q;
+    const ansData = qs.part6[slide.qIndex];
+    const isAnswered = ansData && ansData.checked;
+    const userVal = isAnswered ? ansData.text : (ansData || '');
+    if (isAnswered) wrap.classList.add(ansData.isCorrect ? 'correct' : 'incorrect');
+    const feedbackHTML = isAnswered ? (ansData.isCorrect ? `<div class="input-feedback correct">✨ Correct!</div>` : `<div class="input-feedback incorrect">❌ Incorrect. The correct form is: <strong>${q.answer}</strong></div>`) : '';
+    const inputHTML = isAnswered
+      ? `<input type="text" class="input-quiz-field" style="max-width:300px;" value="${userVal.replace(/"/g,'&quot;')}" disabled>`
+      : `<div style="display:flex;gap:.8rem;align-items:center;width:100%;max-width:450px;"><input type="text" class="input-quiz-field" id="p6-input-${slide.qIndex}" placeholder="Type correct word..." value="${userVal.replace(/"/g,'&quot;')}"><button class="quiz-nav-btn check-btn" style="margin:0;padding:.75rem 1.2rem;flex-shrink:0;" onclick="checkPart6Answer(${slide.qIndex})">Check</button></div>`;
+    wrap.innerHTML = `
+      <div class="carousel-part-label">Part 6</div>
+      <div class="input-quiz-sentence"><strong>${q.qNumber}.</strong> ${q.sentence.replace('_______', `<u>${userVal || '_______'}</u>`)} (${q.bracket})</div>
+      ${inputHTML}${feedbackHTML}
+    `;
+
+  } else if (slide.type === 'writing') {
+    const sIndex = slide.sIndex;
+    const ansData = qs.part7[sIndex];
+    const isAnswered = ansData && ansData.checked;
+    const item = isAnswered ? ansData : (ansData || { word: '', text: '' });
+    const wordsList = qd.part7.words;
+    let optionsHTML = `<option value="">-- Select target word --</option>`;
+    wordsList.forEach(w => { optionsHTML += `<option value="${w}" ${item.word === w ? 'selected' : ''}>${w}</option>`; });
+    const feedbackHTML = isAnswered
+      ? (item.isCorrect ? `<div class="input-feedback correct">✨ Sentence submitted using "${item.word}"!</div>` : `<div class="input-feedback incorrect">❌ Must be ≥15 chars and contain "${item.word}".</div>`)
+      : '';
+    const inputHTML = isAnswered
+      ? `<textarea class="writing-task-textarea" disabled>${item.text || ''}</textarea>`
+      : `<div style="display:flex;gap:.8rem;align-items:center;width:100%;margin-top:.5rem;flex-wrap:wrap;"><textarea class="writing-task-textarea" id="p7-textarea-${sIndex}" placeholder="Write your sentence here...">${item.text || ''}</textarea><button class="quiz-nav-btn check-btn" style="margin:0;padding:.75rem 1.2rem;align-self:flex-end;flex-shrink:0;" onclick="checkPart7Answer(${sIndex})">Check</button></div>`;
+    wrap.innerHTML = `
+      <div class="carousel-part-label">Part 7 — Writing Task (${sIndex+1}/5)</div>
+      <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:.8rem;">
+        <strong>Choose a word:</strong>
+        <select class="theme-select" style="margin:0;padding:.4rem .8rem;font-size:.9rem;" onchange="updatePart7Word(${sIndex}, this.value)" ${isAnswered ? 'disabled' : ''}>${optionsHTML}</select>
+      </div>
+      ${inputHTML}${feedbackHTML}
+    `;
+  }
+
+  container.appendChild(wrap);
+}
+
+function prevCarouselQ() {
+  if (state.carouselQIndex > 0) {
+    state.carouselQIndex--;
+    const module = c1Modules.find(m => m.id === state.activeModuleId);
+    renderCustomQuiz(module);
+  }
+}
+
+function nextCarouselQ() {
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  const slides = _buildCarouselSlides(module);
+  if (state.carouselQIndex < slides.length - 1) {
+    state.carouselQIndex++;
+    renderCustomQuiz(module);
+  }
 }
 
 function updateQuizNavButtons() {
-  const currentPart = state.activeCustomQuizPart;
+  // kept for backward compat — no-op in carousel mode
   const prevBtn = document.getElementById('quiz-prev-btn');
   const nextBtn = document.getElementById('quiz-next-btn');
   const submitBtn = document.getElementById('quiz-submit-btn');
-  const isGraded = state.customQuizState.graded;
-  
   if (!prevBtn || !nextBtn || !submitBtn) return;
-  
-  if (currentPart === 'results') {
-    prevBtn.style.display = 'none';
-    nextBtn.style.display = 'none';
-    submitBtn.style.display = 'none';
-    return;
-  }
-  
-  prevBtn.style.display = 'block';
-  prevBtn.disabled = (currentPart === 1);
-  
-  if (currentPart === 7) {
-    nextBtn.style.display = 'none';
-    submitBtn.style.display = 'block';
-    if (isGraded) {
-      submitBtn.textContent = 'View Results';
-      submitBtn.onclick = () => goToQuizPart('results');
-    } else {
-      submitBtn.textContent = 'Submit Quiz & Grade';
-      submitBtn.onclick = () => gradeEntireQuiz();
-    }
-  } else {
-    nextBtn.style.display = 'block';
-    submitBtn.style.display = 'none';
-    nextBtn.onclick = () => nextQuizPart();
-  }
+  const currentPart = state.activeCustomQuizPart;
+  const isGraded = state.customQuizState.graded;
+  if (currentPart === 'results') { prevBtn.style.display='none'; nextBtn.style.display='none'; submitBtn.style.display='none'; return; }
+  prevBtn.style.display='block'; prevBtn.disabled=(currentPart===1);
+  if (currentPart===7) { nextBtn.style.display='none'; submitBtn.style.display='block'; submitBtn.textContent=isGraded?'View Results':'Submit Quiz & Grade'; submitBtn.onclick=isGraded?()=>goToQuizPart('results'):()=>gradeEntireQuiz(); }
+  else { nextBtn.style.display='block'; submitBtn.style.display='none'; nextBtn.onclick=()=>nextQuizPart(); }
 }
 
 function goToQuizPart(partNum) {
   state.activeCustomQuizPart = partNum;
-  state.selectedPill = null; // reset click matching state
+  state.selectedPill = null;
   const module = c1Modules.find(m => m.id === state.activeModuleId);
   renderCustomQuiz(module);
 }
 
 function prevQuizPart() {
   const currentPart = state.activeCustomQuizPart;
-  if (currentPart === 'results') {
-    goToQuizPart(7);
-  } else if (currentPart > 1) {
-    goToQuizPart(currentPart - 1);
-  }
+  if (currentPart === 'results') goToQuizPart(7);
+  else if (currentPart > 1) goToQuizPart(currentPart - 1);
 }
 
 function nextQuizPart() {
   const currentPart = state.activeCustomQuizPart;
-  if (currentPart < 7) {
-    goToQuizPart(currentPart + 1);
-  }
+  if (currentPart < 7) goToQuizPart(currentPart + 1);
 }
 
 // Render ALL 7 parts stacked (single page mode)
@@ -1358,30 +1468,20 @@ function renderActiveQuizPanel(module) {
 
 function selectCustomPart1Option(qIndex, oIndex) {
   if (state.customQuizState.graded) return;
-  
   const module = c1Modules.find(m => m.id === state.activeModuleId);
   const q = module.vocabQuizData.part1[qIndex];
-  
-  state.customQuizState.part1[qIndex] = {
-    selected: oIndex,
-    isCorrect: (oIndex === q.answer)
-  };
-  
-  renderActiveQuizPanel(module);
+  state.customQuizState.part1[qIndex] = { selected: oIndex, isCorrect: (oIndex === q.answer) };
+  if (getQuizViewMode() === 'carousel') renderCustomQuiz(module);
+  else renderActiveQuizPanel(module);
 }
 
 function selectCustomPart4Option(qIndex, oIndex) {
   if (state.customQuizState.graded) return;
-  
   const module = c1Modules.find(m => m.id === state.activeModuleId);
   const q = module.vocabQuizData.part4[qIndex];
-  
-  state.customQuizState.part4[qIndex] = {
-    selected: oIndex,
-    isCorrect: (oIndex === q.answer)
-  };
-  
-  renderActiveQuizPanel(module);
+  state.customQuizState.part4[qIndex] = { selected: oIndex, isCorrect: (oIndex === q.answer) };
+  if (getQuizViewMode() === 'carousel') renderCustomQuiz(module);
+  else renderActiveQuizPanel(module);
 }
 
 function updatePart5Input(qIndex, val) {
@@ -1422,13 +1522,9 @@ function checkPart5Answer(qIndex) {
   const q = quizData.part5[qIndex];
   const isCorrect = checkTextAnswer(userVal, q.answer);
   
-  quizState.part5[qIndex] = {
-    text: userVal,
-    checked: true,
-    isCorrect: isCorrect
-  };
-  
-  renderActiveQuizPanel(module);
+  quizState.part5[qIndex] = { text: userVal, checked: true, isCorrect: isCorrect };
+  if (getQuizViewMode() === 'carousel') renderCustomQuiz(module);
+  else renderActiveQuizPanel(module);
 }
 
 function checkPart6Answer(qIndex) {
@@ -1443,13 +1539,9 @@ function checkPart6Answer(qIndex) {
   const q = quizData.part6[qIndex];
   const isCorrect = checkWordAnswer(userVal, q.answer);
   
-  quizState.part6[qIndex] = {
-    text: userVal,
-    checked: true,
-    isCorrect: isCorrect
-  };
-  
-  renderActiveQuizPanel(module);
+  quizState.part6[qIndex] = { text: userVal, checked: true, isCorrect: isCorrect };
+  if (getQuizViewMode() === 'carousel') renderCustomQuiz(module);
+  else renderActiveQuizPanel(module);
 }
 
 function checkPart7Answer(sIndex) {
@@ -1463,14 +1555,9 @@ function checkPart7Answer(sIndex) {
   const item = quizState.part7[sIndex] || { word: "", text: "" };
   const isOk = checkSentenceUsage(userVal, item.word);
   
-  quizState.part7[sIndex] = {
-    word: item.word,
-    text: userVal,
-    checked: true,
-    isCorrect: isOk
-  };
-  
-  renderActiveQuizPanel(module);
+  quizState.part7[sIndex] = { word: item.word, text: userVal, checked: true, isCorrect: isOk };
+  if (getQuizViewMode() === 'carousel') renderCustomQuiz(module);
+  else renderActiveQuizPanel(module);
 }
 
 // ══════════════════════════════════════════════════════

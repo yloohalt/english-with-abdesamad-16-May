@@ -997,6 +997,51 @@ body.dark-mode .level-card.active-level:hover {
   margin-bottom: 0;
 }
 
+/* Carousel: one-question-at-a-time styles */
+.carousel-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.carousel-q-counter {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.carousel-part-label {
+  display: inline-block;
+  background: rgba(99,102,241,0.12);
+  color: var(--accent-primary, #6366f1);
+  border: 1px solid rgba(99,102,241,0.3);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  letter-spacing: .5px;
+}
+
+.carousel-slide-wrap {
+  animation: slideIn .25s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.carousel-dot-row {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex: 1;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .quiz-part-tabs {
   display: flex;
   flex-wrap: wrap;
