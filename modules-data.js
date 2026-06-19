@@ -16,7 +16,29 @@ const c1Modules = [
         arabicColl: "reluctantly acquiesce = يذعن على مضض, quietly acquiesce = يذعن بصمت, eventually acquiesce = يذعن في النهاية, acquiesce in a decision = يذعن لقرار, acquiesce to pressure = يذعن للضغط",
         arabic: "يذعن / يرضخ",
         syn: "assent, comply, yield",
-        ant: "resist, oppose, object" },
+        ant: "resist, oppose, object",
+        videoClips: [
+          {
+            path: "Video clips/acquiesce/i'm-disinclined-to-acquiesce-to-your-request.mp4",
+            caption: "I'm disinclined to acquiesce to your request.",
+            arabic: "أنا غير ميال للموافقة على طلبك."
+          },
+          {
+            path: "Video clips/acquiesce/if-i-were-to-acquiesce-would-the-reply-be-delivered-by-your-own-hand.mp4",
+            caption: "If I were to acquiesce, would the reply be delivered by your own hand?",
+            arabic: "إذا كان لي أن أوافق، فهل سيتم تسليم الرد بيدك؟"
+          },
+          {
+            path: "Video clips/acquiesce/well-you-may-tell-the-captain-that-i-am-disinclined-to-acquiesce-to-his-request.mp4",
+            caption: "Well, you may tell the captain that I am disinclined to acquiesce to his request.",
+            arabic: "حسنًا، يمكنك إخبار الكابتن أنني غير ميال للموافقة على طلبه."
+          },
+          {
+            path: "Video clips/acquiesce/you-mean-acquiesce-to-nazi's-demands.mp4",
+            caption: "You mean acquiesce to Nazi's demands.",
+            arabic: "تعني الرضوخ لمطالب النازيين."
+          }
+        ] },
 
       { word: "Capricious", type: "adjective", stress: "ca-PRI-cious", ipa: "/kəˈprɪʃ.əs/", syllables: "ca·pri·cious",
         def: "Changing suddenly and unexpectedly, often without a clear or good reason.",

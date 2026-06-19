@@ -2418,6 +2418,12 @@ function openKeywordPopup(wordName) {
   const syllables = v.stress || v.syllables || v.word;
   const ipa = v.ipa || '/.../';
 
+  const hasVideoClips = v.videoClips && v.videoClips.length > 0;
+  const videoBtnClick = hasVideoClips 
+    ? `openVideoClipsModal('${v.word.replace(/'/g, "\\'")}')`
+    : `toggleYouGlishPlayer('${v.word.replace(/'/g, "\\'")}')`;
+  const settingsBtnStyle = hasVideoClips ? 'display: none;' : '';
+
   cardContent.innerHTML = `
     <div class="word-card-header">
       <div>
@@ -2427,10 +2433,10 @@ function openKeywordPopup(wordName) {
         </div>
       </div>
       <div style="display: flex; gap: 0.8rem; align-items: center;">
-        <button class="word-card-action-btn video-btn" id="word-video-btn" onclick="toggleYouGlishPlayer('${v.word.replace(/'/g, "\\'")}') " title="Watch Pronunciation Video">
+        <button class="word-card-action-btn video-btn" id="word-video-btn" onclick="${videoBtnClick}" title="${hasVideoClips ? 'Practice dictation / Watch video clips' : 'Watch Pronunciation Video'}">
           <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
         </button>
-        <button class="word-card-action-btn settings-btn" id="word-settings-btn" onclick="toggleYouGlishSettings()" title="YouGlish Settings">
+        <button class="word-card-action-btn settings-btn" id="word-settings-btn" style="${settingsBtnStyle}" onclick="toggleYouGlishSettings()" title="YouGlish Settings">
           <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
         <button class="modal-close" style="position: static; margin-top: 0;" onclick="closeWordModal()">&times;</button>
@@ -3148,4 +3154,398 @@ function formatTime(seconds) {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
+
+// ══════════════════════════════════════════════════
+// LOCAL VIDEO CLIPS DICTATION modal
+// ══════════════════════════════════════════════════
+function openVideoClipsModal(wordName) {
+  // Pause other media playing
+  resetStoryAudio();
+  closeWordModal();
+
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  if (!module) return;
+  
+  const v = module.vocabulary.find(item => item.word.toLowerCase() === wordName.toLowerCase());
+  if (!v || !v.videoClips || v.videoClips.length === 0) return;
+  
+  state.activeWordClips = v.videoClips;
+  state.activeWordName = v.word;
+  if (state.activeClipIndex === undefined || state.activeClipWord !== v.word) {
+    state.activeClipIndex = 0;
+    state.activeClipWord = v.word;
+  }
+  
+  // Default settings
+  if (!state.clipRepeatLimit) state.clipRepeatLimit = '3';
+  if (state.clipPlaybackSpeed === undefined) state.clipPlaybackSpeed = 1.0;
+  if (state.clipMode === undefined) state.clipMode = 'normal';
+  if (state.clipHideCaptionFirst === undefined) state.clipHideCaptionFirst = false;
+  if (state.clipCaptionRevealed === undefined) state.clipCaptionRevealed = false;
+  if (state.clipTranslationVisible === undefined) state.clipTranslationVisible = false;
+  
+  if (!state.clipDifficultList) {
+    state.clipDifficultList = JSON.parse(localStorage.getItem('clipDifficultList') || '[]');
+  }
+  
+  let modal = document.getElementById('video-clips-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'video-clips-modal';
+    modal.className = 'modal';
+    document.body.appendChild(modal);
+  }
+  
+  modal.innerHTML = `
+    <div class="modal-content video-modal-content">
+      <button class="modal-close" onclick="closeVideoClipsModal()">&times;</button>
+      <div class="video-modal-header">
+        <h3 class="video-modal-title">
+          🎬 Dictation Practice: <span style="color:var(--accent-color);">${v.word}</span>
+        </h3>
+        <button class="bookmark-clip-btn" onclick="toggleClipBookmark()" title="Bookmark as difficult">
+          <span class="bookmark-star" id="bookmark-star">☆</span>
+        </button>
+      </div>
+      <div id="video-clips-player-container"></div>
+    </div>
+  `;
+  
+  modal.classList.add('active');
+  renderVideoClipsPlayer();
+}
+
+function renderVideoClipsPlayer() {
+  const clips = state.activeWordClips;
+  const idx = state.activeClipIndex;
+  const clip = clips[idx];
+  const word = state.activeWordName;
+  
+  const container = document.getElementById('video-clips-player-container');
+  if (!container) return;
+  
+  const isBookmarked = state.clipDifficultList.includes(clip.path);
+  const starEl = document.getElementById('bookmark-star');
+  if (starEl) {
+    starEl.textContent = isBookmarked ? '★' : '☆';
+    starEl.classList.toggle('bookmarked', isBookmarked);
+  }
+  
+  const totalClips = clips.length;
+  const isFirst = idx === 0;
+  const isLast = idx === totalClips - 1;
+  
+  container.innerHTML = `
+    <!-- Top Nav -->
+    <div class="clip-nav-bar">
+      <button class="clip-nav-btn" onclick="navVideoClip(-1)" ${isFirst ? 'disabled' : ''}>← Prev</button>
+      <span class="clip-counter">Clip <strong>${idx + 1}</strong> of ${totalClips}</span>
+      <button class="clip-nav-btn" onclick="navVideoClip(1)" ${isLast ? 'disabled' : ''}>Next →</button>
+    </div>
+    
+    <!-- Focus Indicator -->
+    <div class="clip-focus-label">
+      Listen for: <strong>${word.toLowerCase()}</strong>
+    </div>
+    
+    <!-- Video Player Box -->
+    <div class="clip-video-wrapper">
+      <video id="dictation-video" src="${clip.path}" playsinline controls style="width: 100%; border-radius: 12px; max-height: 240px; background: #000;"></video>
+    </div>
+    
+    <!-- Speed & Repeat settings -->
+    <div class="clip-options-grid">
+      <div class="clip-option-group">
+        <label>Speed:</label>
+        <div class="clip-btn-group">
+          <button class="clip-opt-btn ${state.clipPlaybackSpeed === 1.0 ? 'active' : ''}" onclick="setClipSpeed(1.0)">1.0x</button>
+          <button class="clip-opt-btn ${state.clipPlaybackSpeed === 0.75 ? 'active' : ''}" onclick="setClipSpeed(0.75)">0.75x</button>
+        </div>
+      </div>
+      
+      <div class="clip-option-group">
+        <label>Repeat:</label>
+        <select class="clip-select" onchange="setClipRepeat(this.value)">
+          <option value="3" ${state.clipRepeatLimit === '3' ? 'selected' : ''}>3 times</option>
+          <option value="6" ${state.clipRepeatLimit === '6' ? 'selected' : ''}>6 times</option>
+          <option value="10" ${state.clipRepeatLimit === '10' ? 'selected' : ''}>10 times</option>
+          <option value="loop" ${state.clipRepeatLimit === 'loop' ? 'selected' : ''}>Loop Infinitely</option>
+        </select>
+      </div>
+    </div>
+    
+    <!-- Modes tabs -->
+    <div class="clip-mode-tabs">
+      <button class="clip-mode-tab ${state.clipMode === 'normal' ? 'active' : ''}" onclick="setClipMode('normal')">📖 Normal Mode</button>
+      <button class="clip-mode-tab ${state.clipMode === 'quiz' ? 'active' : ''}" onclick="setClipMode('quiz')">✍️ Quiz Mode</button>
+    </div>
+    
+    <!-- Tab content -->
+    <div class="clip-content-panel">
+      ${state.clipMode === 'normal' ? _renderNormalModePanel(clip) : _renderQuizModePanel(clip)}
+    </div>
+  `;
+  
+  setupVideoListeners();
+}
+
+function _renderNormalModePanel(clip) {
+  const isHidden = state.clipHideCaptionFirst;
+  const isRevealed = state.clipCaptionRevealed;
+  
+  // Highlight target word
+  const highlightWord = (caption, target) => {
+    const regex = new RegExp(`\\b(${target})\\b`, 'gi');
+    return caption.replace(regex, `<mark class="caption-highlight">$1</mark>`);
+  };
+  const highlightedCaption = highlightWord(clip.caption, state.activeWordName);
+  
+  const showCaptionToggle = `
+    <div style="margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end; width:100%;">
+      <label class="clip-toggle-label" style="font-size:0.85rem; color:var(--text-secondary); cursor:pointer; display:flex; align-items:center; gap:5px;">
+        <input type="checkbox" id="hide-caption-first-checkbox" onchange="toggleHideCaptionFirst(this.checked)" ${state.clipHideCaptionFirst ? 'checked' : ''}>
+        Hide caption first
+      </label>
+    </div>
+  `;
+  
+  let captionBody = '';
+  if (isHidden && !isRevealed) {
+    captionBody = `
+      <div class="clip-caption-box hidden-caption" onclick="revealCaption()" style="cursor:pointer; text-align:center; padding: 1.5rem; border: 2px dashed var(--card-border); border-radius:12px; background: rgba(255,255,255,0.01);">
+        <span>👁️ Click to reveal caption</span>
+      </div>
+    `;
+  } else {
+    captionBody = `
+      <div class="clip-caption-box" style="padding: 1.2rem; border: 1px solid var(--card-border); border-radius:12px; background: rgba(255,255,255,0.02); margin-bottom: 1rem;">
+        <p class="clip-caption-text" style="margin:0; font-size:1.05rem; line-height:1.5; color:var(--text-primary); font-weight:500;">${highlightedCaption}</p>
+      </div>
+      <div class="clip-translation-section">
+        <button class="clip-translate-btn" onclick="toggleClipTranslation()" style="background:none; border:1px solid var(--card-border); color:var(--text-secondary); padding: 5px 12px; border-radius:20px; font-size:0.85rem; cursor:pointer;">
+          🌐 ${state.clipTranslationVisible ? 'Hide Arabic' : 'Show Arabic'}
+        </button>
+        <div class="clip-translation-box" style="display: ${state.clipTranslationVisible ? 'block' : 'none'}; margin-top:0.8rem; padding: 1rem; border-radius:8px; background:rgba(168, 85, 247, 0.05); border-left: 3px solid var(--accent-color);">
+          <p class="clip-translation-text" dir="rtl" style="margin:0; font-family:'Alyamama', serif; font-size:1.15rem; color:var(--text-primary); text-align:right;">${clip.arabic}</p>
+        </div>
+      </div>
+    `;
+  }
+  
+  return showCaptionToggle + captionBody;
+}
+
+function _renderQuizModePanel(clip) {
+  const isChecked = state.clipQuizChecked;
+  const userText = state.clipUserTranscription || '';
+  
+  if (!isChecked) {
+    return `
+      <div class="clip-quiz-input-wrapper" style="display:flex; flex-direction:column; gap:0.8rem;">
+        <textarea id="clip-quiz-textarea" class="clip-quiz-textarea" placeholder="Listen carefully and type exactly what you hear..." rows="3" style="width:100%; border:1px solid var(--card-border); border-radius:12px; background:var(--card-bg); color:var(--text-primary); padding:10px 14px; font-size:1rem; resize:vertical; font-family:inherit;"></textarea>
+        <button class="clip-quiz-submit-btn" onclick="checkClipDictation()" style="align-self:flex-end; background:var(--accent-color); border:none; color:#fff; padding:8px 20px; border-radius:30px; font-size:0.9rem; font-weight:600; cursor:pointer; box-shadow:0 4px 14px rgba(168,85,247,0.3)">Check Answer</button>
+      </div>
+    `;
+  }
+  
+  const diffResult = getDictationDiff(userText, clip.caption);
+  const scoreClass = diffResult.accuracy >= 90 ? 'score-excellent' : (diffResult.accuracy >= 60 ? 'score-good' : 'score-poor');
+  
+  // Format diffHTML
+  const diffHTML = diffResult.diff.map(item => {
+    if (item.type === 'correct') {
+      return `<span class="diff-correct">${item.word}</span>`;
+    } else if (item.type === 'incorrect') {
+      return `<span class="diff-incorrect">${item.word}</span>`;
+    } else {
+      return `<span class="diff-missing">${item.word}</span>`;
+    }
+  }).join(' ');
+  
+  return `
+    <div class="clip-quiz-results">
+      <div class="clip-quiz-score-row" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.8rem;">
+        <span style="font-weight:600; color:var(--text-secondary);">Accuracy Score:</span>
+        <span class="clip-quiz-score ${scoreClass}" style="font-size:1.25rem; font-weight:700;">${diffResult.accuracy}%</span>
+      </div>
+      <div class="clip-quiz-diff-box" style="padding:1.2rem; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,0.01); line-height:1.6; font-size:1.05rem; margin-bottom:1rem;">
+        <p style="margin:0;">${diffHTML}</p>
+      </div>
+      
+      <h4 style="margin:1rem 0 0.5rem 0; font-size:0.9rem; color:var(--text-secondary); font-weight:600;">Original Caption:</h4>
+      <div class="clip-caption-box" style="padding:1rem; border:1px solid var(--card-border); border-radius:12px; background:rgba(255,255,255,0.02); margin-bottom:1rem;">
+        <p style="margin:0; font-size:0.95rem; color:var(--text-primary); line-height:1.5;">${clip.caption}</p>
+      </div>
+      
+      <button class="clip-quiz-retry-btn" onclick="retryClipDictation()" style="background:transparent; border:1px solid var(--card-border); color:var(--text-primary); padding:6px 16px; border-radius:20px; font-size:0.85rem; font-weight:600; cursor:pointer;">Try Another Attempt</button>
+    </div>
+  `;
+}
+
+function setupVideoListeners() {
+  const video = document.getElementById('dictation-video');
+  if (!video) return;
+  
+  video.playbackRate = state.clipPlaybackSpeed || 1.0;
+  
+  video.onplay = () => {
+    if (video.currentTime === 0) {
+      state.clipCurrentRepeat = 0;
+    }
+  };
+  
+  video.onended = () => {
+    state.clipCurrentRepeat = (state.clipCurrentRepeat || 0) + 1;
+    const limit = state.clipRepeatLimit || '3';
+    if (limit === 'loop') {
+      video.currentTime = 0;
+      video.play().catch(err => console.log("video play failed:", err));
+    } else {
+      const limitVal = parseInt(limit, 10);
+      if (state.clipCurrentRepeat < limitVal) {
+        video.currentTime = 0;
+        video.play().catch(err => console.log("video play failed:", err));
+      }
+    }
+  };
+}
+
+function getDictationDiff(userText, correctText) {
+  const cleanWord = w => w.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?'’]/g, "").trim();
+  
+  const userWords = userText.trim().split(/\s+/).filter(Boolean);
+  const correctWords = correctText.trim().split(/\s+/).filter(Boolean);
+  
+  const n = userWords.length;
+  const m = correctWords.length;
+  const dp = Array.from({ length: n + 1 }, () => Array(m + 1).fill(0));
+  
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      if (cleanWord(userWords[i - 1]) === cleanWord(correctWords[j - 1])) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+  }
+  
+  let i = n, j = m;
+  const diff = [];
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && cleanWord(userWords[i - 1]) === cleanWord(correctWords[j - 1])) {
+      diff.unshift({ type: 'correct', word: correctWords[j - 1] });
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      diff.unshift({ type: 'missing', word: correctWords[j - 1] });
+      j--;
+    } else {
+      diff.unshift({ type: 'incorrect', word: userWords[i - 1] });
+      i--;
+    }
+  }
+  
+  const correctCount = diff.filter(d => d.type === 'correct').length;
+  const accuracy = m > 0 ? Math.round((correctCount / m) * 100) : 0;
+  
+  return { diff, accuracy };
+}
+
+function toggleClipBookmark() {
+  const clips = state.activeWordClips;
+  const clip = clips[state.activeClipIndex];
+  const list = state.clipDifficultList || [];
+  
+  const idx = list.indexOf(clip.path);
+  if (idx > -1) {
+    list.splice(idx, 1);
+  } else {
+    list.push(clip.path);
+  }
+  
+  state.clipDifficultList = list;
+  localStorage.setItem('clipDifficultList', JSON.stringify(list));
+  
+  const starEl = document.getElementById('bookmark-star');
+  if (starEl) {
+    const isBookmarked = list.includes(clip.path);
+    starEl.textContent = isBookmarked ? '★' : '☆';
+    starEl.classList.toggle('bookmarked', isBookmarked);
+  }
+}
+
+function navVideoClip(dir) {
+  const newIdx = state.activeClipIndex + dir;
+  if (newIdx >= 0 && newIdx < state.activeWordClips.length) {
+    state.activeClipIndex = newIdx;
+    state.clipCurrentRepeat = 0;
+    state.clipQuizChecked = false;
+    state.clipUserTranscription = '';
+    state.clipCaptionRevealed = false;
+    state.clipTranslationVisible = false;
+    renderVideoClipsPlayer();
+  }
+}
+
+function setClipSpeed(speed) {
+  state.clipPlaybackSpeed = speed;
+  const video = document.getElementById('dictation-video');
+  if (video) {
+    video.playbackRate = speed;
+  }
+  renderVideoClipsPlayer();
+}
+
+function setClipRepeat(limit) {
+  state.clipRepeatLimit = limit;
+  state.clipCurrentRepeat = 0;
+}
+
+function setClipMode(mode) {
+  state.clipMode = mode;
+  renderVideoClipsPlayer();
+}
+
+function toggleHideCaptionFirst(checked) {
+  state.clipHideCaptionFirst = checked;
+  state.clipCaptionRevealed = false;
+  renderVideoClipsPlayer();
+}
+
+function revealCaption() {
+  state.clipCaptionRevealed = true;
+  renderVideoClipsPlayer();
+}
+
+function toggleClipTranslation() {
+  state.clipTranslationVisible = !state.clipTranslationVisible;
+  renderVideoClipsPlayer();
+}
+
+function checkClipDictation() {
+  const textEl = document.getElementById('clip-quiz-textarea');
+  if (textEl) {
+    state.clipUserTranscription = textEl.value;
+  }
+  state.clipQuizChecked = true;
+  renderVideoClipsPlayer();
+}
+
+function retryClipDictation() {
+  state.clipQuizChecked = false;
+  state.clipUserTranscription = '';
+  renderVideoClipsPlayer();
+}
+
+function closeVideoClipsModal() {
+  const modal = document.getElementById('video-clips-modal');
+  if (modal) {
+    modal.classList.remove('active');
+  }
+  const video = document.getElementById('dictation-video');
+  if (video) {
+    video.pause();
+  }
 }
