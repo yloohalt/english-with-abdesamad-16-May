@@ -1202,6 +1202,227 @@ body.dark-mode .level-card.active-level:hover {
   color: #ef4444;
 }
 
+/* ══════════════════════════════════════════════════
+   DRAG-AND-DROP MATCHING ENGINE (SVG Connectors)
+   ══════════════════════════════════════════════════ */
+.drag-match-progress-bar {
+  height: 6px;
+  border-radius: 30px;
+  background: var(--card-border);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.drag-match-progress-fill {
+  height: 100%;
+  border-radius: 30px;
+  background: linear-gradient(90deg, var(--accent-primary, #6366f1), #10b981);
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+}
+
+.drag-match-status {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+/* 3-column layout: cards | SVG | zones */
+.drag-match-columns {
+  display: grid;
+  grid-template-columns: 1fr 60px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+/* Left column: draggable word cards */
+.drag-match-left {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.drag-match-card {
+  background: linear-gradient(135deg, rgba(99,102,241,0.08), var(--card-bg));
+  border: 2px solid var(--accent-primary, #6366f1);
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  transition: transform .18s, box-shadow .18s, opacity .18s;
+  user-select: none;
+  touch-action: none;
+}
+
+.drag-match-card:hover {
+  transform: translateX(4px) scale(1.03);
+  box-shadow: 0 6px 20px rgba(99,102,241,.25);
+}
+
+.drag-match-card.dragging {
+  opacity: 0.35;
+  cursor: grabbing;
+  transform: scale(.97);
+}
+
+/* Middle column: SVG connector */
+.drag-match-svg-col {
+  min-height: 200px;
+}
+
+/* Right column: drop zones */
+.drag-match-right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.drag-match-zone {
+  background: var(--card-bg);
+  border: 2.5px dashed var(--card-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  transition: border-color .2s, background .2s, transform .2s;
+}
+
+.drag-match-zone.drag-over {
+  border-color: var(--accent-primary, #6366f1);
+  background: rgba(99,102,241,0.08);
+  transform: scale(1.02);
+  color: var(--text-primary);
+}
+
+.drag-match-zone.matched-zone {
+  border-style: solid;
+  border-color: #10b981;
+  background: rgba(16,185,129,0.1);
+  color: #10b981;
+  font-weight: 600;
+  animation: matchPop .45s cubic-bezier(.36,.07,.19,.97);
+}
+
+.drag-match-zone.wrong-shake {
+  animation: shakeZone .4s;
+  border-color: #ef4444;
+  background: rgba(239,68,68,0.08);
+}
+
+/* Reset button */
+.drag-match-reset-btn {
+  margin-top: 18px;
+  padding: 9px 24px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 2px solid var(--card-border);
+  border-radius: 30px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+  display: block;
+  margin-left: auto;
+}
+
+.drag-match-reset-btn:hover {
+  border-color: var(--accent-primary, #6366f1);
+  color: var(--accent-primary, #6366f1);
+}
+
+/* All done message */
+.drag-match-all-done {
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #10b981;
+  padding: 1rem 0;
+}
+
+/* Celebration overlay */
+.drag-match-celebration {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 30, 0.92);
+  border-radius: 16px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  gap: 10px;
+  animation: fadeInCel .4s ease;
+}
+
+.drag-match-celebration.show {
+  display: flex;
+}
+
+.drag-match-celebration h3 {
+  color: #fff;
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.drag-match-celebration p {
+  color: rgba(255,255,255,.85);
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Confetti */
+.match-confetti-piece {
+  position: absolute;
+  border-radius: 2px;
+  animation: confettiMatchFall linear forwards;
+}
+
+/* Animations */
+@keyframes matchPop {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.07); }
+  60%  { transform: scale(.98); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shakeZone {
+  0%,100% { transform: translateX(0); }
+  20%     { transform: translateX(-8px); }
+  40%     { transform: translateX(8px); }
+  60%     { transform: translateX(-6px); }
+  80%     { transform: translateX(6px); }
+}
+
+@keyframes fadeInCel {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes confettiMatchFall {
+  0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(120px) rotate(360deg); opacity: 0; }
+}
+
+/* Mobile responsive */
+@media (max-width: 560px) {
+  .drag-match-columns {
+    grid-template-columns: 1fr 30px 1fr;
+    gap: 4px;
+  }
+  .drag-match-card { padding: 8px 10px; font-size: 0.82rem; }
+  .drag-match-zone { font-size: 0.82rem; padding: 8px 10px; }
+}
+
 /* Input Questions */
 .input-quiz-card {
   background: rgba(255, 255, 255, 0.02);

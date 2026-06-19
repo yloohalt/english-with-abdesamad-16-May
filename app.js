@@ -930,7 +930,7 @@ function renderActiveQuizPanel(module) {
   } else if (currentPart === 2) {
     panelDiv.innerHTML = `
       <div class="quiz-part-title">Part 2: Match the Word to Its Meaning</div>
-      <div class="quiz-part-desc">Drag definitions to the correct words, or click a definition pill and then a target slot next to a word. (Questions 13–24)</div>
+      <div class="quiz-part-desc">Drag each word card onto its correct definition drop zone. (Questions 13–24)</div>
       <div id="part2-board-container"></div>
     `;
     panelContainer.appendChild(panelDiv);
@@ -939,7 +939,7 @@ function renderActiveQuizPanel(module) {
   } else if (currentPart === 3) {
     panelDiv.innerHTML = `
       <div class="quiz-part-title">Part 3: Collocation Matching</div>
-      <div class="quiz-part-desc">Drag the collocations to match the verbs/nouns, or click a collocation pill and then a target slot. (Questions 25–34)</div>
+      <div class="quiz-part-desc">Drag each word card onto its correct collocation. (Questions 25–34)</div>
       <div id="part3-board-container"></div>
     `;
     panelContainer.appendChild(panelDiv);
@@ -1270,320 +1270,444 @@ function checkPart7Answer(sIndex) {
   renderActiveQuizPanel(module);
 }
 
+// ══════════════════════════════════════════════════════
+// MATCHING ENGINE — Drag-and-Drop with SVG Connectors
+// ══════════════════════════════════════════════════════
+
+// Shared drag/touch state for matching parts
+let _matchDraggedItem = null;  // { value, partNum }
+let _matchTouchGhost = null;
+let _matchTouchCard = null;
+let _matchConnReflowRaf = {};
+
+function _matchShuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function _matchSyncSVG(partNum) {
+  const svg = document.getElementById(`match-svg-${partNum}`);
+  const leftCol = document.getElementById(`match-left-${partNum}`);
+  const rightCol = document.getElementById(`match-right-${partNum}`);
+  if (!svg || !leftCol || !rightCol) return;
+  const h = Math.max(leftCol.offsetHeight, rightCol.offsetHeight, 200);
+  svg.setAttribute('height', h);
+  svg.parentElement.style.minHeight = h + 'px';
+}
+
+function _matchClearLines(partNum) {
+  const svg = document.getElementById(`match-svg-${partNum}`);
+  if (!svg) return;
+  svg.querySelectorAll('.match-conn-line').forEach(l => l.remove());
+}
+
+function _matchDrawLine(partNum, cardId, zoneId, animate) {
+  const svg = document.getElementById(`match-svg-${partNum}`);
+  if (!svg) return;
+  const card = document.getElementById(cardId);
+  const zone = document.getElementById(zoneId);
+  if (!card || !zone) return;
+  _matchSyncSVG(partNum);
+  const svgRect = svg.getBoundingClientRect();
+  const cRect = card.getBoundingClientRect();
+  const zRect = zone.getBoundingClientRect();
+  const x1 = cRect.right - svgRect.left;
+  const y1 = cRect.top + cRect.height / 2 - svgRect.top;
+  const x2 = zRect.left - svgRect.left;
+  const y2 = zRect.top + zRect.height / 2 - svgRect.top;
+  const mx = (svg.clientWidth || 40) / 2;
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.classList.add('match-conn-line');
+  path.setAttribute('d', `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+  path.setAttribute('stroke', 'var(--accent-primary, #6366f1)');
+  path.setAttribute('stroke-width', '2.5');
+  path.setAttribute('fill', 'none');
+  path.setAttribute('marker-end', `url(#match-arrow-${partNum})`);
+  svg.appendChild(path);
+  const len = path.getTotalLength();
+  path.setAttribute('stroke-dasharray', String(len));
+  if (animate) {
+    path.setAttribute('stroke-dashoffset', String(len));
+    path.style.transition = 'stroke-dashoffset .5s ease';
+    requestAnimationFrame(() => path.setAttribute('stroke-dashoffset', '0'));
+  } else {
+    path.setAttribute('stroke-dashoffset', '0');
+  }
+}
+
+function _matchRedrawLines(partNum, connections) {
+  _matchClearLines(partNum);
+  connections.forEach(conn => _matchDrawLine(partNum, conn.cardId, conn.zoneId, false));
+}
+
+function _matchScheduleReflow(partNum, connections) {
+  if (_matchConnReflowRaf[partNum]) cancelAnimationFrame(_matchConnReflowRaf[partNum]);
+  _matchConnReflowRaf[partNum] = requestAnimationFrame(() => {
+    _matchConnReflowRaf[partNum] = null;
+    _matchSyncSVG(partNum);
+    _matchRedrawLines(partNum, connections);
+  });
+}
+
+// Build the 3-column matching UI (cards | SVG | drop zones)
+function _buildMatchUI(container, partNum, items, quizState, partKey, valueKey, labelPrefix, qNumStart) {
+  container.innerHTML = '';
+
+  // Progress bar
+  const totalItems = items.length;
+  const matchedCount = Object.values(quizState[partKey]).filter(m => m.isCorrect).length;
+  const progressPct = (matchedCount / totalItems) * 100;
+
+  const progressBar = document.createElement('div');
+  progressBar.className = 'drag-match-progress-bar';
+  progressBar.innerHTML = `
+    <div class="drag-match-progress-fill" id="match-prog-fill-${partNum}" style="width:${progressPct}%"></div>
+  `;
+  container.appendChild(progressBar);
+
+  const statusEl = document.createElement('div');
+  statusEl.className = 'drag-match-status';
+  statusEl.id = `match-status-${partNum}`;
+  statusEl.textContent = `${matchedCount} / ${totalItems} matched`;
+  container.appendChild(statusEl);
+
+  // 3-column wrapper: left cards | SVG | right drop zones
+  const cols = document.createElement('div');
+  cols.className = 'drag-match-columns';
+
+  // Left column: shuffled draggable cards (only unmatched)
+  const leftCol = document.createElement('div');
+  leftCol.className = 'drag-match-left';
+  leftCol.id = `match-left-${partNum}`;
+
+  const shuffledItems = _matchShuffle(items);
+  shuffledItems.forEach(item => {
+    const word = item.word;
+    const isMatched = quizState[partKey][word] && quizState[partKey][word].isCorrect;
+    if (isMatched) return; // already correctly matched, don't show in left pool
+
+    const card = document.createElement('div');
+    card.className = 'drag-match-card';
+    card.id = `match-card-${partNum}-${word.replace(/[^a-zA-Z0-9]/g,'_')}`;
+    card.draggable = true;
+    card.dataset.word = word;
+    card.dataset.part = partNum;
+    card.innerHTML = `<span>${word}</span><span class="drag-match-check" style="opacity:0">✅</span>`;
+    _addMatchCardDragListeners(card, partNum);
+    leftCol.appendChild(card);
+  });
+
+  if (leftCol.children.length === 0) {
+    const done = document.createElement('div');
+    done.className = 'drag-match-all-done';
+    done.textContent = matchedCount === totalItems ? '🎉 All matched correctly!' : '';
+    leftCol.appendChild(done);
+  }
+
+  // Middle column: SVG
+  const svgCol = document.createElement('div');
+  svgCol.className = 'drag-match-svg-col';
+  svgCol.style.position = 'relative';
+  svgCol.innerHTML = `
+    <svg id="match-svg-${partNum}" width="60" height="200" style="position:absolute;top:0;left:0;overflow:visible;pointer-events:none;">
+      <defs>
+        <marker id="match-arrow-${partNum}" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+          <circle cx="4" cy="4" r="3" fill="var(--accent-primary, #6366f1)"/>
+        </marker>
+      </defs>
+    </svg>
+  `;
+
+  // Right column: drop zones (shuffled order)
+  const rightCol = document.createElement('div');
+  rightCol.className = 'drag-match-right';
+  rightCol.id = `match-right-${partNum}`;
+
+  const shuffledZones = _matchShuffle(items);
+  shuffledZones.forEach(item => {
+    const word = item.word;
+    const value = item[valueKey];
+    const matchData = quizState[partKey][word];
+    const isCorrect = matchData && matchData.isCorrect;
+
+    const zone = document.createElement('div');
+    zone.className = 'drag-match-zone';
+    zone.id = `match-zone-${partNum}-${word.replace(/[^a-zA-Z0-9]/g,'_')}`;
+    zone.dataset.word = word;
+    zone.dataset.part = partNum;
+    zone.dataset.value = value;
+
+    if (isCorrect) {
+      zone.classList.add('matched-zone');
+      zone.textContent = value;
+    } else if (matchData) {
+      zone.classList.add('wrong-zone');
+      zone.textContent = value;
+    } else {
+      zone.textContent = value;
+    }
+
+    _addMatchZoneDropListeners(zone, partNum, partKey, valueKey, qNumStart, items);
+    rightCol.appendChild(zone);
+  });
+
+  cols.appendChild(leftCol);
+  cols.appendChild(svgCol);
+  cols.appendChild(rightCol);
+  container.appendChild(cols);
+
+  // Reset button
+  const resetBtn = document.createElement('button');
+  resetBtn.className = 'drag-match-reset-btn';
+  resetBtn.textContent = '🔄 Reset Matching';
+  resetBtn.onclick = () => {
+    if (state.customQuizState.graded) return;
+    state.customQuizState[partKey] = {};
+    _matchClearLines(partNum);
+    const module = c1Modules.find(m => m.id === state.activeModuleId);
+    renderActiveQuizPanel(module);
+  };
+  container.appendChild(resetBtn);
+
+  // Celebration overlay
+  const cel = document.createElement('div');
+  cel.className = 'drag-match-celebration';
+  cel.id = `match-cel-${partNum}`;
+  cel.innerHTML = `
+    <div id="match-conf-${partNum}"></div>
+    <div style="font-size:3rem">🎉</div>
+    <h3>Well done!</h3>
+    <p>You matched all ${totalItems} correctly!</p>
+  `;
+  container.style.position = 'relative';
+  container.appendChild(cel);
+
+  // Draw existing correct connections
+  const connections = [];
+  Object.keys(quizState[partKey]).forEach(word => {
+    const matchData = quizState[partKey][word];
+    if (matchData && matchData.isCorrect) {
+      const cardId = `match-card-${partNum}-${word.replace(/[^a-zA-Z0-9]/g,'_')}`;
+      const zoneId = `match-zone-${partNum}-${word.replace(/[^a-zA-Z0-9]/g,'_')}`;
+      connections.push({ cardId, zoneId });
+    }
+  });
+  state[`_matchConnections_p${partNum}`] = connections;
+
+  requestAnimationFrame(() => {
+    _matchSyncSVG(partNum);
+    _matchRedrawLines(partNum, connections);
+  });
+
+  window.addEventListener('resize', () => _matchScheduleReflow(partNum, state[`_matchConnections_p${partNum}`] || []), { passive: true });
+
+  // Show celebration if all done
+  if (matchedCount === totalItems) {
+    cel.classList.add('show');
+    _spawnMatchConfetti(partNum);
+  }
+}
+
+function _addMatchCardDragListeners(card, partNum) {
+  card.addEventListener('dragstart', e => {
+    _matchDraggedItem = { word: card.dataset.word, partNum };
+    card.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setDragImage(document.createElement('div'), 0, 0);
+  });
+  card.addEventListener('dragend', () => {
+    card.classList.remove('dragging');
+    _matchDraggedItem = null;
+  });
+  // Touch
+  card.addEventListener('touchstart', _matchTouchStart, { passive: false });
+}
+
+function _addMatchZoneDropListeners(zone, partNum, partKey, valueKey, qNumStart, items) {
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    if (!_matchDraggedItem) return;
+    _handleMatchDrop(_matchDraggedItem.word, zone, partNum, partKey, valueKey, items);
+  });
+}
+
+document.addEventListener('dragover', e => {}); // needed for ghost positioning
+
+function _handleMatchDrop(word, zone, partNum, partKey, valueKey, items) {
+  if (state.customQuizState.graded) return;
+  const quizState = state.customQuizState;
+  const targetWord = zone.dataset.word;
+  const correctItem = items.find(i => i.word === targetWord);
+  if (!correctItem) return;
+
+  if (quizState[partKey][targetWord] && quizState[partKey][targetWord].isCorrect) return; // already locked
+
+  const isCorrect = (word === targetWord);
+  const valueToStore = correctItem[valueKey];
+
+  if (isCorrect) {
+    // Correct match
+    zone.classList.add('matched-zone');
+    zone.classList.remove('wrong-zone', 'drag-over');
+
+    const cardId = `match-card-${partNum}-${word.replace(/[^a-zA-Z0-9]/g,'_')}`;
+    const zoneId = zone.id;
+
+    if (partKey === 'part2') {
+      quizState.part2[targetWord] = { meaning: valueToStore, isCorrect: true };
+    } else {
+      quizState.part3[targetWord] = { collocation: valueToStore, isCorrect: true };
+    }
+
+    // Remove matched card from left column
+    const cardEl = document.getElementById(cardId);
+    if (cardEl) cardEl.remove();
+
+    // Draw connector line
+    const connections = state[`_matchConnections_p${partNum}`] || [];
+    connections.push({ cardId, zoneId });
+    state[`_matchConnections_p${partNum}`] = connections;
+
+    requestAnimationFrame(() => {
+      _matchSyncSVG(partNum);
+      _matchDrawLine(partNum, cardId, zoneId, true);
+    });
+
+    // Update progress
+    const total = items.length;
+    const matched = Object.values(quizState[partKey]).filter(m => m.isCorrect).length;
+    const fillEl = document.getElementById(`match-prog-fill-${partNum}`);
+    const statusEl = document.getElementById(`match-status-${partNum}`);
+    if (fillEl) fillEl.style.width = ((matched / total) * 100) + '%';
+    if (statusEl) statusEl.textContent = `${matched} / ${total} matched`;
+
+    if (matched === total) {
+      setTimeout(() => {
+        const cel = document.getElementById(`match-cel-${partNum}`);
+        if (cel) { cel.classList.add('show'); _spawnMatchConfetti(partNum); }
+      }, 600);
+    }
+
+  } else {
+    // Wrong match — shake
+    zone.classList.add('wrong-shake');
+    setTimeout(() => zone.classList.remove('wrong-shake'), 450);
+  }
+}
+
+// Touch support
+function _matchTouchStart(e) {
+  e.preventDefault();
+  _matchTouchCard = e.currentTarget;
+  _matchDraggedItem = { word: _matchTouchCard.dataset.word, partNum: parseInt(_matchTouchCard.dataset.part) };
+  _matchTouchCard.classList.add('dragging');
+  _matchTouchGhost = _matchTouchCard.cloneNode(true);
+  _matchTouchGhost.style.cssText = `position:fixed;z-index:9999;opacity:.85;pointer-events:none;
+    width:${_matchTouchCard.offsetWidth}px;transform:rotate(-3deg) scale(1.05);
+    box-shadow:0 8px 24px rgba(99,102,241,.45);border-radius:10px;`;
+  document.body.appendChild(_matchTouchGhost);
+  _moveTouchGhostMatch(e.touches[0]);
+  document.addEventListener('touchmove', _matchTouchMove, { passive: false });
+  document.addEventListener('touchend', _matchTouchEnd);
+}
+
+function _moveTouchGhostMatch(t) {
+  if (!_matchTouchGhost) return;
+  _matchTouchGhost.style.left = (t.clientX - _matchTouchGhost.offsetWidth / 2) + 'px';
+  _matchTouchGhost.style.top  = (t.clientY - _matchTouchGhost.offsetHeight / 2) + 'px';
+}
+
+function _matchTouchMove(e) {
+  e.preventDefault();
+  _moveTouchGhostMatch(e.touches[0]);
+  document.querySelectorAll('.drag-match-zone').forEach(z => z.classList.remove('drag-over'));
+  const el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+  const zone = el ? el.closest('.drag-match-zone') : null;
+  if (zone) zone.classList.add('drag-over');
+}
+
+function _matchTouchEnd(e) {
+  document.removeEventListener('touchmove', _matchTouchMove);
+  document.removeEventListener('touchend', _matchTouchEnd);
+  document.querySelectorAll('.drag-match-zone').forEach(z => z.classList.remove('drag-over'));
+  if (_matchTouchGhost) { _matchTouchGhost.remove(); _matchTouchGhost = null; }
+  if (_matchTouchCard) _matchTouchCard.classList.remove('dragging');
+  const t = e.changedTouches[0];
+  const el = document.elementFromPoint(t.clientX, t.clientY);
+  const zone = el ? el.closest('.drag-match-zone') : null;
+  if (zone && _matchDraggedItem) {
+    const partNum = _matchDraggedItem.partNum;
+    const module = c1Modules.find(m => m.id === state.activeModuleId);
+    const quizData = module.vocabQuizData;
+    const partKey = partNum === 2 ? 'part2' : 'part3';
+    const valueKey = partNum === 2 ? 'meaning' : 'collocation';
+    const items = quizData[partKey];
+    _handleMatchDrop(_matchDraggedItem.word, zone, partNum, partKey, valueKey, items);
+  }
+  _matchDraggedItem = null; _matchTouchCard = null;
+}
+
+function _spawnMatchConfetti(partNum) {
+  const cont = document.getElementById(`match-conf-${partNum}`);
+  if (!cont) return;
+  cont.innerHTML = '';
+  const colors = ['#6366f1','#f59e0b','#10b981','#ef4444','#8b5cf6','#f97316'];
+  for (let i = 0; i < 40; i++) {
+    const p = document.createElement('div');
+    p.className = 'match-confetti-piece';
+    p.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*40}%;
+      background:${colors[i%colors.length]};
+      width:${6+Math.random()*10}px;height:${6+Math.random()*10}px;
+      border-radius:${Math.random()>0.5?'50%':'2px'};
+      animation-duration:${.8+Math.random()*1.2}s;
+      animation-delay:${Math.random()*.5}s;`;
+    cont.appendChild(p);
+  }
+}
+
 // Matching Part 2
 function renderPart2Board(module) {
   const container = document.getElementById('part2-board-container');
   if (!container) return;
-  
-  container.innerHTML = '';
   const quizData = module.vocabQuizData;
   const quizState = state.customQuizState;
-  
-  // Side-by-Side Wrapper
-  const wrapper = document.createElement('div');
-  wrapper.className = 'matching-container-side-by-side';
-  
-  // Left Column (Board)
-  const boardCol = document.createElement('div');
-  boardCol.className = 'matching-board-column';
-  
-  quizData.part2.forEach((item, index) => {
-    const word = item.word;
-    const qNum = 13 + index;
-    const matchData = quizState.part2[word];
-    const isCorrect = matchData && matchData.isCorrect;
-    
-    let rowClass = '';
-    if (matchData) {
-      rowClass = isCorrect ? 'correct' : 'incorrect';
-    }
-    
-    let slotContent = '';
-    if (matchData) {
-      const showRemoveBtn = isCorrect ? '' : `<span class="matching-pill-remove" onclick="removePart2Match('${word.replace(/'/g, "\\'")}', event)">&times;</span>`;
-      slotContent = `
-        <div class="matching-pill placed">
-          <span class="option-text">${matchData.meaning}</span>
-          ${showRemoveBtn}
-        </div>
-      `;
-    } else {
-      slotContent = `<span class="matching-slot-placeholder">Click definition pill on right, then click here to match</span>`;
-    }
-    
-    let correctAnsHTML = '';
-    if (matchData && !isCorrect) {
-      correctAnsHTML = `<span class="matching-correct-ans">Correct definition: (${item.correctLetter}) ${item.meaning}</span>`;
-    }
-    
-    const row = document.createElement('div');
-    row.className = `matching-row ${rowClass}`;
-    
-    const escWord = word.replace(/'/g, "\\'");
-    row.innerHTML = `
-      <div class="matching-word">${qNum}. ${word}</div>
-      <div class="matching-slot" id="p2-slot-${index}" onclick="placePart2Pill('${escWord}')"
-           ondragover="event.preventDefault(); this.classList.add('drag-over')"
-           ondragleave="this.classList.remove('drag-over')"
-           ondrop="handlePart2Drop(event, '${escWord}')">
-        ${slotContent}
-      </div>
-    `;
-    
-    if (correctAnsHTML) {
-      const rowWrapper = document.createElement('div');
-      rowWrapper.appendChild(row);
-      const correction = document.createElement('div');
-      correction.innerHTML = correctAnsHTML;
-      correction.style.paddingLeft = '150px';
-      rowWrapper.appendChild(correction);
-      boardCol.appendChild(rowWrapper);
-    } else {
-      boardCol.appendChild(row);
-    }
-  });
-  
-  wrapper.appendChild(boardCol);
-  
-  // Right Column (Pills Pool)
-  const poolCol = document.createElement('div');
-  poolCol.className = 'matching-pool-column';
-  poolCol.innerHTML = `<h4>Definitions Pool</h4>`;
-  
-  const pool = document.createElement('div');
-  pool.className = 'matching-pills-pool';
-  pool.style.marginTop = '0';
-  
-  const placedMeanings = Object.values(quizState.part2).map(m => m.meaning);
-  
-  state.customQuizPills.part2.forEach((meaning) => {
-    const isPlaced = placedMeanings.includes(meaning);
-    if (isPlaced) return;
-    
-    const pill = document.createElement('div');
-    pill.className = 'matching-pill';
-    if (state.selectedPill === meaning) {
-      pill.classList.add('selected');
-    }
-    
-    const escMeaning = meaning.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    pill.draggable = true;
-    pill.setAttribute('ondragstart', `handlePart2DragStart(event, '${escMeaning}')`);
-    pill.onclick = () => selectPart2Pill(meaning);
-    pill.innerHTML = `<span class="option-text">${meaning}</span>`;
-    pool.appendChild(pill);
-  });
-  
-  if (pool.children.length === 0 && placedMeanings.length === quizData.part2.length) {
-    const allDone = Object.values(quizState.part2).every(m => m.isCorrect);
-    pool.innerHTML = allDone
-      ? `<div style="color: #10b981; font-weight: 600; text-align: center; width: 100%;">🎉 All definitions matched correctly!</div>`
-      : `<div style="color: var(--text-secondary); font-style: italic; text-align: center; width: 100%;">Some matches are incorrect. Click the matching slots on the left to remove and retry.</div>`;
-  }
-  
-  poolCol.appendChild(pool);
-  wrapper.appendChild(poolCol);
-  container.appendChild(wrapper);
-}
-
-function selectPart2Pill(meaning) {
-  if (state.customQuizState.graded) return;
-  if (state.selectedPill === meaning) {
-    state.selectedPill = null;
-  } else {
-    state.selectedPill = meaning;
-  }
-  const module = c1Modules.find(m => m.id === state.activeModuleId);
-  renderPart2Board(module);
-}
-
-function placePart2Pill(word) {
-  if (state.customQuizState.graded) return;
-  const module = c1Modules.find(m => m.id === state.activeModuleId);
-  const quizData = module.vocabQuizData;
-  const quizState = state.customQuizState;
-  
-  if (quizState.part2[word] && quizState.part2[word].isCorrect) return; // locked if correct
-  
-  if (state.selectedPill) {
-    const correctItem = quizData.part2.find(item => item.word === word);
-    const isCorrect = (state.selectedPill === correctItem.meaning);
-    quizState.part2[word] = {
-      meaning: state.selectedPill,
-      isCorrect: isCorrect
-    };
-    state.selectedPill = null;
-  } else if (quizState.part2[word]) {
-    delete quizState.part2[word];
-  }
-  
-  renderPart2Board(module);
-}
-
-function removePart2Match(word, ev) {
-  if (ev) ev.stopPropagation();
-  if (state.customQuizState.graded) return;
-  
-  delete state.customQuizState.part2[word];
-  const module = c1Modules.find(m => m.id === state.activeModuleId);
-  renderPart2Board(module);
-}
-
-function handlePart2DragStart(ev, meaning) {
-  if (state.customQuizState.graded) return;
-  ev.dataTransfer.setData("text/plain", meaning);
-}
-
-function handlePart2Drop(ev, word) {
-  ev.preventDefault();
-  const slot = ev.currentTarget;
-  slot.classList.remove('drag-over');
-  if (state.customQuizState.graded) return;
-  
-  const meaning = ev.dataTransfer.getData("text/plain");
-  if (!meaning) return;
-  
-  const module = c1Modules.find(m => m.id === state.activeModuleId);
-  const quizData = module.vocabQuizData;
-  const quizState = state.customQuizState;
-  
-  if (quizState.part2[word] && quizState.part2[word].isCorrect) return;
-  
-  const correctItem = quizData.part2.find(item => item.word === word);
-  const isCorrect = (meaning === correctItem.meaning);
-  
-  quizState.part2[word] = {
-    meaning: meaning,
-    isCorrect: isCorrect
-  };
-  
-  renderPart2Board(module);
+  _buildMatchUI(container, 2, quizData.part2, quizState, 'part2', 'meaning', 'Part 2', 13);
 }
 
 // Matching Part 3
 function renderPart3Board(module) {
   const container = document.getElementById('part3-board-container');
   if (!container) return;
-  
-  container.innerHTML = '';
   const quizData = module.vocabQuizData;
   const quizState = state.customQuizState;
-  
-  const wrapper = document.createElement('div');
-  wrapper.className = 'matching-container-side-by-side';
-  
-  const boardCol = document.createElement('div');
-  boardCol.className = 'matching-board-column';
-  
-  quizData.part3.forEach((item, index) => {
-    const word = item.word;
-    const qNum = 25 + index;
-    const matchData = quizState.part3[word];
-    const isCorrect = matchData && matchData.isCorrect;
-    
-    let rowClass = '';
-    if (matchData) {
-      rowClass = isCorrect ? 'correct' : 'incorrect';
-    }
-    
-    let slotContent = '';
-    if (matchData) {
-      const showRemoveBtn = isCorrect ? '' : `<span class="matching-pill-remove" onclick="removePart3Match('${word.replace(/'/g, "\\'")}', event)">&times;</span>`;
-      slotContent = `
-        <div class="matching-pill placed">
-          <span class="option-text">${matchData.collocation}</span>
-          ${showRemoveBtn}
-        </div>
-      `;
-    } else {
-      slotContent = `<span class="matching-slot-placeholder">Click collocation pill on right, then click here to match</span>`;
-    }
-    
-    let correctAnsHTML = '';
-    if (matchData && !isCorrect) {
-      correctAnsHTML = `<span class="matching-correct-ans">Correct collocation: <strong>${word} ${item.collocation}</strong></span>`;
-    }
-    
-    const row = document.createElement('div');
-    row.className = `matching-row ${rowClass}`;
-    
-    const escWord = word.replace(/'/g, "\\'");
-    row.innerHTML = `
-      <div class="matching-word">${qNum}. ${word}</div>
-      <div class="matching-slot" id="part3-slot-${index}" onclick="placePart3Pill('${escWord}')"
-           ondragover="event.preventDefault(); this.classList.add('drag-over')"
-           ondragleave="this.classList.remove('drag-over')"
-           ondrop="handlePart3Drop(event, '${escWord}')">
-        ${slotContent}
-      </div>
-    `;
-    
-    if (correctAnsHTML) {
-      const rowWrapper = document.createElement('div');
-      rowWrapper.appendChild(row);
-      const correction = document.createElement('div');
-      correction.innerHTML = correctAnsHTML;
-      correction.style.paddingLeft = '150px';
-      rowWrapper.appendChild(correction);
-      boardCol.appendChild(rowWrapper);
-    } else {
-      boardCol.appendChild(row);
-    }
-  });
-  
-  wrapper.appendChild(boardCol);
-  
-  const poolCol = document.createElement('div');
-  poolCol.className = 'matching-pool-column';
-  poolCol.innerHTML = `<h4>Collocations Pool</h4>`;
-  
-  const pool = document.createElement('div');
-  pool.className = 'matching-pills-pool';
-  pool.style.marginTop = '0';
-  
-  const placedCollocations = Object.values(quizState.part3).map(m => m.collocation);
-  
-  state.customQuizPills.part3.forEach((collocation) => {
-    const isPlaced = placedCollocations.includes(collocation);
-    if (isPlaced) return;
-    
-    const pill = document.createElement('div');
-    pill.className = 'matching-pill';
-    if (state.selectedPill === collocation) {
-      pill.classList.add('selected');
-    }
-    
-    const escCollocation = collocation.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    pill.draggable = true;
-    pill.setAttribute('ondragstart', `handlePart3DragStart(event, '${escCollocation}')`);
-    pill.onclick = () => selectPart3Pill(collocation);
-    pill.innerHTML = `<span class="option-text">${collocation}</span>`;
-    pool.appendChild(pill);
-  });
-  
-  if (pool.children.length === 0 && placedCollocations.length === quizData.part3.length) {
-    const allDone = Object.values(quizState.part3).every(m => m.isCorrect);
-    pool.innerHTML = allDone
-      ? `<div style="color: #10b981; font-weight: 600; text-align: center; width: 100%;">🎉 All collocations matched correctly!</div>`
-      : `<div style="color: var(--text-secondary); font-style: italic; text-align: center; width: 100%;">Some matches are incorrect. Click the matching slots on the left to remove and retry.</div>`;
-  }
-  
-  poolCol.appendChild(pool);
-  wrapper.appendChild(poolCol);
-  container.appendChild(wrapper);
+  _buildMatchUI(container, 3, quizData.part3, quizState, 'part3', 'collocation', 'Part 3', 25);
 }
 
-function selectPart3Pill(collocation) {
+// Legacy stubs (grading still reads from quizState.part2/part3 so no changes needed there)
+function removePart2Match(word, ev) {
+  if (ev) ev.stopPropagation();
   if (state.customQuizState.graded) return;
-  if (state.selectedPill === collocation) {
-    state.selectedPill = null;
-  } else {
-    state.selectedPill = collocation;
-  }
+  delete state.customQuizState.part2[word];
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  renderPart2Board(module);
+}
+function removePart3Match(word, ev) {
+  if (ev) ev.stopPropagation();
+  if (state.customQuizState.graded) return;
+  delete state.customQuizState.part3[word];
   const module = c1Modules.find(m => m.id === state.activeModuleId);
   renderPart3Board(module);
 }
 
+// Dummy: grading reads quizState directly, these are no longer used for click-placing
+function placePart2Pill(word) {}
 function placePart3Pill(word) {
   if (state.customQuizState.graded) return;
   const module = c1Modules.find(m => m.id === state.activeModuleId);
