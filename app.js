@@ -738,16 +738,60 @@ function selectVocabQuizOption(qIndex, oIndex) {
 
 // --- Custom Stepper Quiz Controller & Logic ---
 
+function getQuizViewMode() {
+  return localStorage.getItem('quizViewMode') || 'carousel';
+}
+
+function setQuizViewMode(mode) {
+  localStorage.setItem('quizViewMode', mode);
+  const module = c1Modules.find(m => m.id === state.activeModuleId);
+  renderCustomQuiz(module);
+}
+
 function renderCustomQuiz(module) {
   const quizContainer = document.getElementById('vocab-quiz-container');
   if (!quizContainer) return;
-  
+
+  const mode = getQuizViewMode();
   const totalParts = 7;
   const currentPart = state.activeCustomQuizPart;
   const quizState = state.customQuizState;
   const isGraded = quizState.graded;
-  
-  // Calculate progress percent
+
+  // View mode toggle button HTML
+  const toggleHTML = `
+    <div class="quiz-view-toggle">
+      <button class="quiz-toggle-btn ${mode === 'carousel' ? 'active' : ''}" onclick="setQuizViewMode('carousel')">
+        🎠 Carousel
+      </button>
+      <button class="quiz-toggle-btn ${mode === 'page' ? 'active' : ''}" onclick="setQuizViewMode('page')">
+        📄 Single Page
+      </button>
+    </div>
+  `;
+
+  if (mode === 'page') {
+    // ── SINGLE PAGE MODE ──
+    quizContainer.innerHTML = `
+      <div class="vocab-quiz-wizard">
+        <div class="quiz-wizard-header">
+          ${toggleHTML}
+        </div>
+        <div class="quiz-panels-container" id="quiz-panels-container"></div>
+        <div class="quiz-wizard-footer" style="justify-content:flex-end;">
+          ${
+            isGraded
+              ? `<button class="quiz-nav-btn submit-all-btn" onclick="goToQuizPart('results')">View Results</button>`
+              : `<button class="quiz-nav-btn submit-all-btn" onclick="gradeEntireQuiz()">Submit Quiz & Grade</button>`
+          }
+        </div>
+      </div>
+    `;
+    renderAllQuizParts(module);
+    return;
+  }
+
+  // ── CAROUSEL MODE ──
   let progressPercent = 0;
   if (currentPart === 'results') {
     progressPercent = 100;
@@ -755,12 +799,11 @@ function renderCustomQuiz(module) {
     progressPercent = Math.round(((currentPart - 1) / totalParts) * 100);
     if (progressPercent === 0) progressPercent = 5;
   }
-  
-  // Build Tabs HTML
+
   let tabsHTML = '';
   for (let i = 1; i <= totalParts; i++) {
     const activeClass = (currentPart === i) ? 'active' : '';
-    const completedClass = (isGraded || Object.keys(quizState[`part${i}`]).length > 0) ? 'completed' : '';
+    const completedClass = (isGraded || Object.keys(quizState[`part${i}`] || {}).length > 0) ? 'completed' : '';
     tabsHTML += `
       <button class="part-tab-btn ${activeClass} ${completedClass}" onclick="goToQuizPart(${i})">
         Part ${i}
@@ -775,21 +818,19 @@ function renderCustomQuiz(module) {
       </button>
     `;
   }
-  
-  // Main layout wrapper
+
   quizContainer.innerHTML = `
     <div class="vocab-quiz-wizard">
       <div class="quiz-wizard-header">
+        ${toggleHTML}
         <div class="quiz-part-tabs">${tabsHTML}</div>
         <div class="quiz-progress-bar-container">
           <div class="quiz-progress-bar" style="width: ${progressPercent}%;"></div>
         </div>
       </div>
-      
       <div class="quiz-panels-container" id="quiz-panels-container">
         <!-- Rendered dynamically -->
       </div>
-      
       <div class="quiz-wizard-footer">
         <button class="quiz-nav-btn prev-btn" id="quiz-prev-btn" onclick="prevQuizPart()">Previous Part</button>
         <button class="quiz-nav-btn next-btn" id="quiz-next-btn" onclick="nextQuizPart()">Next Part</button>
@@ -797,7 +838,7 @@ function renderCustomQuiz(module) {
       </div>
     </div>
   `;
-  
+
   renderActiveQuizPanel(module);
   updateQuizNavButtons();
 }
@@ -858,6 +899,168 @@ function nextQuizPart() {
   const currentPart = state.activeCustomQuizPart;
   if (currentPart < 7) {
     goToQuizPart(currentPart + 1);
+  }
+}
+
+// Render ALL 7 parts stacked (single page mode)
+function renderAllQuizParts(module) {
+  const panelContainer = document.getElementById('quiz-panels-container');
+  if (!panelContainer) return;
+  panelContainer.innerHTML = '';
+
+  const partDefs = [
+    { num: 1, title: 'Part 1: Choose the Best Word',              desc: 'Choose the option that best completes the sentence. (Questions 1–12)' },
+    { num: 2, title: 'Part 2: Match the Word to Its Meaning',     desc: 'Drag each word card onto its correct definition drop zone. (Questions 13–24)' },
+    { num: 3, title: 'Part 3: Collocation Matching',              desc: 'Drag each word card onto its correct collocation. (Questions 25–34)' },
+    { num: 4, title: 'Part 4: Synonyms and Antonyms in Context',  desc: 'Choose the closest synonym or antonym. (Questions 35–42)' },
+    { num: 5, title: 'Part 5: Correct the Mistake',               desc: 'Rewrite the sentence correctly. (Questions 43–50)' },
+    { num: 6, title: 'Part 6: Complete with the Correct Word Form', desc: 'Complete the sentence using the correct form. (Questions 51–56)' },
+    { num: 7, title: 'Part 7: Short Writing Task',                desc: module.vocabQuizData.part7.instruction },
+  ];
+
+  partDefs.forEach(({ num, title, desc }) => {
+    const section = document.createElement('div');
+    section.className = 'quiz-page-section';
+    section.innerHTML = `
+      <div class="quiz-part-title">${title}</div>
+      <div class="quiz-part-desc">${desc}</div>
+      <div id="page-part${num}-container"></div>
+    `;
+    panelContainer.appendChild(section);
+  });
+
+  // Now populate each part using existing panel logic by temporarily overriding activeCustomQuizPart
+  const savedPart = state.activeCustomQuizPart;
+  for (let i = 1; i <= 7; i++) {
+    state.activeCustomQuizPart = i;
+    _renderPartIntoContainer(module, i, `page-part${i}-container`);
+  }
+  state.activeCustomQuizPart = savedPart;
+
+  if (state.customQuizState.graded) {
+    const resultsSection = document.createElement('div');
+    resultsSection.className = 'quiz-page-section';
+    const resultsDiv = document.createElement('div');
+    renderQuizResults(module, resultsDiv);
+    resultsSection.appendChild(resultsDiv);
+    panelContainer.appendChild(resultsSection);
+  }
+}
+
+// Render a single part's content into a specific container ID
+function _renderPartIntoContainer(module, partNum, containerId) {
+  const quizData = module.vocabQuizData;
+  const quizState = state.customQuizState;
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  if (partNum === 1) {
+    quizData.part1.forEach((q, qIndex) => {
+      const card = document.createElement('div');
+      card.className = 'quiz-question-card';
+      const ansData = quizState.part1[qIndex];
+      const isAnswered = ansData !== undefined;
+      if (isAnswered) card.classList.add(ansData.isCorrect ? 'correct' : 'incorrect');
+      let choicesHTML = '';
+      q.choices.forEach((choice, oIndex) => {
+        let optClass = '';
+        if (isAnswered) {
+          if (oIndex === q.answer) optClass = 'correct';
+          else if (ansData.selected === oIndex) optClass = 'incorrect';
+        }
+        choicesHTML += `<div class="quiz-option ${optClass} ${isAnswered ? 'disabled' : ''}" onclick="selectCustomPart1Option(${qIndex}, ${oIndex})"><span class="option-marker">${String.fromCharCode(65+oIndex)}</span><span class="option-text">${choice}</span></div>`;
+      });
+      const feedbackHTML = isAnswered
+        ? (ansData.isCorrect ? `<div class="quiz-feedback correct"><strong>✨ Correct!</strong> "${q.choices[q.answer]}" is correct.</div>` : `<div class="quiz-feedback incorrect"><strong>❌ Incorrect.</strong> The correct answer is "${q.choices[q.answer]}".</div>`)
+        : '';
+      card.innerHTML = `<div class="quiz-question">${q.qNumber}. ${q.question}</div><div class="quiz-options ${isAnswered ? 'answered' : ''}">${choicesHTML}</div>${feedbackHTML}`;
+      container.appendChild(card);
+    });
+
+  } else if (partNum === 2) {
+    container.id = 'part2-board-container';
+    renderPart2Board(module);
+
+  } else if (partNum === 3) {
+    container.id = 'part3-board-container';
+    renderPart3Board(module);
+
+  } else if (partNum === 4) {
+    quizData.part4.forEach((q, qIndex) => {
+      const card = document.createElement('div');
+      card.className = 'quiz-question-card';
+      const ansData = quizState.part4[qIndex];
+      const isAnswered = ansData !== undefined;
+      if (isAnswered) card.classList.add(ansData.isCorrect ? 'correct' : 'incorrect');
+      let choicesHTML = '';
+      q.choices.forEach((choice, oIndex) => {
+        let optClass = '';
+        if (isAnswered) {
+          if (oIndex === q.answer) optClass = 'correct';
+          else if (ansData.selected === oIndex) optClass = 'incorrect';
+        }
+        choicesHTML += `<div class="quiz-option ${optClass} ${isAnswered ? 'disabled' : ''}" onclick="selectCustomPart4Option(${qIndex}, ${oIndex})"><span class="option-marker">${String.fromCharCode(65+oIndex)}</span><span class="option-text">${choice}</span></div>`;
+      });
+      const feedbackHTML = isAnswered
+        ? (ansData.isCorrect ? `<div class="quiz-feedback correct"><strong>✨ Correct!</strong> "${q.choices[q.answer]}" is correct.</div>` : `<div class="quiz-feedback incorrect"><strong>❌ Incorrect.</strong> The correct answer is "${q.choices[q.answer]}".</div>`)
+        : '';
+      card.innerHTML = `<div class="quiz-question">${q.qNumber}. ${q.question}</div><div class="quiz-options ${isAnswered ? 'answered' : ''}">${choicesHTML}</div>${feedbackHTML}`;
+      container.appendChild(card);
+    });
+
+  } else if (partNum === 5) {
+    quizData.part5.forEach((q, qIndex) => {
+      const card = document.createElement('div');
+      card.className = 'input-quiz-card';
+      const ansData = quizState.part5[qIndex];
+      const isAnswered = ansData && ansData.checked;
+      const userVal = isAnswered ? ansData.text : (ansData || '');
+      if (isAnswered) card.classList.add(ansData.isCorrect ? 'correct' : 'incorrect');
+      const feedbackHTML = isAnswered ? (ansData.isCorrect ? `<div class="input-feedback correct">✨ Correct!</div>` : `<div class="input-feedback incorrect">❌ Incorrect.<br><strong>Correct Answer:</strong> ${q.answer}</div>`) : '';
+      const inputHTML = isAnswered
+        ? `<input type="text" class="input-quiz-field" value="${userVal.replace(/"/g,'&quot;')}" disabled>`
+        : `<div style="display:flex;gap:.8rem;align-items:center;width:100%;"><input type="text" class="input-quiz-field" id="p5-input-${qIndex}" placeholder="Type correct sentence..." value="${userVal.replace(/"/g,'&quot;')}"><button class="quiz-nav-btn check-btn" style="margin:0;padding:.75rem 1.2rem;flex-shrink:0;" onclick="checkPart5Answer(${qIndex})">Check</button></div>`;
+      card.innerHTML = `<div class="input-quiz-sentence"><strong>${q.qNumber}.</strong> Incorrect: <em>"${q.sentence}"</em></div>${inputHTML}${feedbackHTML}`;
+      container.appendChild(card);
+    });
+
+  } else if (partNum === 6) {
+    quizData.part6.forEach((q, qIndex) => {
+      const card = document.createElement('div');
+      card.className = 'input-quiz-card';
+      const ansData = quizState.part6[qIndex];
+      const isAnswered = ansData && ansData.checked;
+      const userVal = isAnswered ? ansData.text : (ansData || '');
+      if (isAnswered) card.classList.add(ansData.isCorrect ? 'correct' : 'incorrect');
+      const feedbackHTML = isAnswered ? (ansData.isCorrect ? `<div class="input-feedback correct">✨ Correct!</div>` : `<div class="input-feedback incorrect">❌ Incorrect. The correct form is: <strong>${q.answer}</strong></div>`) : '';
+      const inputHTML = isAnswered
+        ? `<input type="text" class="input-quiz-field" style="max-width:300px;" value="${userVal.replace(/"/g,'&quot;')}" disabled>`
+        : `<div style="display:flex;gap:.8rem;align-items:center;width:100%;max-width:450px;"><input type="text" class="input-quiz-field" id="p6-input-${qIndex}" placeholder="Type correct word..." value="${userVal.replace(/"/g,'&quot;')}"><button class="quiz-nav-btn check-btn" style="margin:0;padding:.75rem 1.2rem;flex-shrink:0;" onclick="checkPart6Answer(${qIndex})">Check</button></div>`;
+      card.innerHTML = `<div class="input-quiz-sentence"><strong>${q.qNumber}.</strong> ${q.sentence.replace('_______', `<u>${userVal || '_______'}</u>`)} (${q.bracket})</div>${inputHTML}${feedbackHTML}`;
+      container.appendChild(card);
+    });
+
+  } else if (partNum === 7) {
+    const wordsList = quizData.part7.words;
+    for (let sIndex = 0; sIndex < 5; sIndex++) {
+      const ansData = quizState.part7[sIndex];
+      const isAnswered = ansData && ansData.checked;
+      const item = isAnswered ? ansData : (ansData || { word: '', text: '' });
+      let optionsHTML = `<option value="">-- Select target word --</option>`;
+      wordsList.forEach(w => {
+        optionsHTML += `<option value="${w}" ${item.word === w ? 'selected' : ''}>${w}</option>`;
+      });
+      const feedbackHTML = isAnswered
+        ? (item.isCorrect ? `<div class="input-feedback correct">✨ Sentence submitted using "${item.word}"!</div>` : `<div class="input-feedback incorrect">❌ Must be ≥15 chars and contain "${item.word}".</div>`)
+        : '';
+      const inputHTML = isAnswered
+        ? `<textarea class="writing-task-textarea" disabled>${item.text || ''}</textarea>`
+        : `<div style="display:flex;gap:.8rem;align-items:center;width:100%;margin-top:.5rem;flex-wrap:wrap;"><textarea class="writing-task-textarea" id="p7-textarea-${sIndex}" placeholder="Write your sentence here...">${item.text || ''}</textarea><button class="quiz-nav-btn check-btn" style="margin:0;padding:.75rem 1.2rem;align-self:flex-end;flex-shrink:0;" onclick="checkPart7Answer(${sIndex})">Check</button></div>`;
+      const card = document.createElement('div');
+      card.className = 'writing-task-item';
+      card.innerHTML = `<div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;"><strong>Sentence ${sIndex+1}:</strong><select class="theme-select" style="margin:0;padding:.4rem .8rem;font-size:.9rem;" onchange="updatePart7Word(${sIndex}, this.value)" ${isAnswered ? 'disabled' : ''}>${optionsHTML}</select></div>${inputHTML}${feedbackHTML}`;
+      container.appendChild(card);
+    }
   }
 }
 
