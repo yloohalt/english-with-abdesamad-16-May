@@ -37,6 +37,11 @@ const c1Modules = [
             path: "Video clips/acquiesce/you-mean-acquiesce-to-nazi's-demands.mp4",
             caption: "You mean acquiesce to Nazi's demands.",
             arabic: "تعني الرضوخ لمطالب النازيين."
+          },
+          {
+            path: "Video clips/acquiesce/i-need-to-know-your-acquiesce-to-that.mp4",
+            caption: "I need to know your acquiesce to that.",
+            arabic: "أنا بحاجة لمعرفة موافقتك على ذلك."
           }
         ] },
 
