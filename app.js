@@ -3184,6 +3184,9 @@ function openVideoClipsModal(wordName) {
   if (state.clipHideCaptionFirst === undefined) state.clipHideCaptionFirst = false;
   if (state.clipCaptionRevealed === undefined) state.clipCaptionRevealed = false;
   if (state.clipTranslationVisible === undefined) state.clipTranslationVisible = false;
+  if (state.clipBlurVideo === undefined) state.clipBlurVideo = false;
+  
+  state.clipShouldAutoplay = true;
   
   if (!state.clipDifficultList) {
     state.clipDifficultList = JSON.parse(localStorage.getItem('clipDifficultList') || '[]');
@@ -3251,10 +3254,10 @@ function renderVideoClipsPlayer() {
     
     <!-- Video Player Box -->
     <div class="clip-video-wrapper">
-      <video id="dictation-video" src="${clip.path}" playsinline controls style="width: 100%; border-radius: 12px; max-height: 240px; background: #000;"></video>
+      <video id="dictation-video" class="${state.clipBlurVideo ? 'blur-video' : ''}" src="${clip.path}" playsinline controls style="width: 100%; border-radius: 12px; max-height: 240px; background: #000;"></video>
     </div>
     
-    <!-- Speed & Repeat settings -->
+    <!-- Speed, Repeat & Blur settings -->
     <div class="clip-options-grid">
       <div class="clip-option-group">
         <label>Speed:</label>
@@ -3272,6 +3275,13 @@ function renderVideoClipsPlayer() {
           <option value="10" ${state.clipRepeatLimit === '10' ? 'selected' : ''}>10 times</option>
           <option value="loop" ${state.clipRepeatLimit === 'loop' ? 'selected' : ''}>Loop Infinitely</option>
         </select>
+      </div>
+
+      <div class="clip-option-group" style="justify-content: flex-end;">
+        <label class="clip-toggle-label" style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem; color:var(--text-secondary); user-select:none;">
+          <input type="checkbox" id="blur-video-checkbox" onchange="toggleClipVideoBlur(this.checked)" ${state.clipBlurVideo ? 'checked' : ''}>
+          🎧 Blur Video
+        </label>
       </div>
     </div>
     
@@ -3409,6 +3419,11 @@ function setupVideoListeners() {
       }
     }
   };
+
+  if (state.clipShouldAutoplay) {
+    state.clipShouldAutoplay = false;
+    video.play().catch(err => console.log("autoplay prevented:", err));
+  }
 }
 
 function getDictationDiff(userText, correctText) {
@@ -3485,7 +3500,16 @@ function navVideoClip(dir) {
     state.clipUserTranscription = '';
     state.clipCaptionRevealed = false;
     state.clipTranslationVisible = false;
+    state.clipShouldAutoplay = true;
     renderVideoClipsPlayer();
+  }
+}
+
+function toggleClipVideoBlur(checked) {
+  state.clipBlurVideo = checked;
+  const video = document.getElementById('dictation-video');
+  if (video) {
+    video.classList.toggle('blur-video', checked);
   }
 }
 

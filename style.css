@@ -2852,11 +2852,20 @@ body.dark-mode .yg-custom-caption-container {
   background: #000;
 }
 
+.clip-video-wrapper video {
+  transition: filter 0.3s ease;
+}
+
+.blur-video {
+  filter: blur(25px) brightness(0.8);
+  pointer-events: none;
+}
+
 /* Options Grid */
 .clip-options-grid {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 1.5rem;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
   margin-bottom: 1.2rem;
   align-items: center;
 }
