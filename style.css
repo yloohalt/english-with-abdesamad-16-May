@@ -1328,6 +1328,27 @@ body.dark-mode .level-card.active-level:hover {
 }
 
 /* Reset button */
+/* Floating drag ghost */
+.match-drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  background: var(--accent-primary, #6366f1);
+  color: #fff;
+  border-radius: 10px;
+  padding: 8px 18px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: 0 8px 24px rgba(99,102,241,.45);
+  transform: rotate(-3deg) scale(1.05);
+  display: none;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: none;
+}
+
+/* Reset button */
 .drag-match-reset-btn {
   margin-top: 18px;
   padding: 9px 24px;

@@ -1323,7 +1323,7 @@ function _matchDrawLine(partNum, cardId, zoneId, animate) {
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
   path.classList.add('match-conn-line');
   path.setAttribute('d', `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
-  path.setAttribute('stroke', 'var(--accent-primary, #6366f1)');
+  path.setAttribute('stroke', '#10b981');
   path.setAttribute('stroke-width', '2.5');
   path.setAttribute('fill', 'none');
   path.setAttribute('marker-end', `url(#match-arrow-${partNum})`);
@@ -1419,7 +1419,7 @@ function _buildMatchUI(container, partNum, items, quizState, partKey, valueKey, 
     <svg id="match-svg-${partNum}" width="60" height="200" style="position:absolute;top:0;left:0;overflow:visible;pointer-events:none;">
       <defs>
         <marker id="match-arrow-${partNum}" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
-          <circle cx="4" cy="4" r="3" fill="var(--accent-primary, #6366f1)"/>
+          <circle cx="4" cy="4" r="3" fill="#10b981"/>
         </marker>
       </defs>
     </svg>
@@ -1515,16 +1515,34 @@ function _buildMatchUI(container, partNum, items, quizState, partKey, valueKey, 
   }
 }
 
+function _getOrCreateDragGhost() {
+  let ghost = document.getElementById('_matchDragGhost');
+  if (!ghost) {
+    ghost = document.createElement('div');
+    ghost.id = '_matchDragGhost';
+    ghost.className = 'match-drag-ghost';
+    document.body.appendChild(ghost);
+  }
+  return ghost;
+}
+
 function _addMatchCardDragListeners(card, partNum) {
   card.addEventListener('dragstart', e => {
     _matchDraggedItem = { word: card.dataset.word, partNum };
     card.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
+    // suppress browser ghost — use our custom one
     e.dataTransfer.setDragImage(document.createElement('div'), 0, 0);
+    // show floating ghost
+    const ghost = _getOrCreateDragGhost();
+    ghost.textContent = card.dataset.word;
+    ghost.style.display = 'flex';
   });
   card.addEventListener('dragend', () => {
     card.classList.remove('dragging');
     _matchDraggedItem = null;
+    const ghost = document.getElementById('_matchDragGhost');
+    if (ghost) ghost.style.display = 'none';
   });
   // Touch
   card.addEventListener('touchstart', _matchTouchStart, { passive: false });
@@ -1541,7 +1559,13 @@ function _addMatchZoneDropListeners(zone, partNum, partKey, valueKey, qNumStart,
   });
 }
 
-document.addEventListener('dragover', e => {}); // needed for ghost positioning
+document.addEventListener('dragover', e => {
+  const ghost = document.getElementById('_matchDragGhost');
+  if (ghost && ghost.style.display === 'flex') {
+    ghost.style.left = (e.clientX + 14) + 'px';
+    ghost.style.top  = (e.clientY - 20) + 'px';
+  }
+});
 
 function _handleMatchDrop(word, zone, partNum, partKey, valueKey, items) {
   if (state.customQuizState.graded) return;
