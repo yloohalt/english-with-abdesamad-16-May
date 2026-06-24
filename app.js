@@ -238,48 +238,48 @@ function renderModulesGrid() {
 // --- 4b. MVW CHAPTERS RENDERING ---
 
 const mvwChapters = [
-  { id: 1,  title: 'Chapter 1',  topic: 'The Natural World',         words: 'Ecology, Fauna, Flora, Habitat, Ecosystem' },
-  { id: 2,  title: 'Chapter 2',  topic: 'Science & Technology',       words: 'Innovation, Algorithm, Synthesis, Prototype, Mechanism' },
-  { id: 3,  title: 'Chapter 3',  topic: 'Health & Medicine',          words: 'Diagnosis, Immunity, Chronic, Therapist, Prognosis' },
-  { id: 4,  title: 'Chapter 4',  topic: 'Society & Culture',          words: 'Heritage, Diversity, Integration, Norms, Tradition' },
-  { id: 5,  title: 'Chapter 5',  topic: 'Politics & Governance',      words: 'Democracy, Legislation, Sovereignty, Rhetoric, Reform' },
-  { id: 6,  title: 'Chapter 6',  topic: 'Economics & Finance',        words: 'Inflation, Revenue, Austerity, Subsidy, Liability' },
-  { id: 7,  title: 'Chapter 7',  topic: 'Education & Learning',       words: 'Pedagogy, Curriculum, Literacy, Assessment, Cognition' },
-  { id: 8,  title: 'Chapter 8',  topic: 'Psychology & Behaviour',     words: 'Perception, Stimulus, Motivation, Anxiety, Cognition' },
-  { id: 9,  title: 'Chapter 9',  topic: 'The Environment',            words: 'Pollution, Sustainability, Renewable, Conservation, Climate' },
-  { id: 10, title: 'Chapter 10', topic: 'Travel & Geography',         words: 'Terrain, Expedition, Migration, Landscape, Altitude' },
-  { id: 11, title: 'Chapter 11', topic: 'Food & Nutrition',           words: 'Culinary, Nutrients, Metabolism, Organic, Sustenance' },
-  { id: 12, title: 'Chapter 12', topic: 'Sports & Fitness',           words: 'Endurance, Agility, Stamina, Coordination, Performance' },
-  { id: 13, title: 'Chapter 13', topic: 'Art & Literature',           words: 'Aesthetic, Metaphor, Narrative, Symbolism, Critique' },
-  { id: 14, title: 'Chapter 14', topic: 'Media & Communication',      words: 'Broadcasting, Propaganda, Censorship, Journalism, Bias' },
-  { id: 15, title: 'Chapter 15', topic: 'Law & Justice',              words: 'Verdict, Prosecution, Statute, Jurisdiction, Acquittal' },
-  { id: 16, title: 'Chapter 16', topic: 'Business & Management',      words: 'Strategy, Merger, Procurement, Leverage, Stakeholder' },
-  { id: 17, title: 'Chapter 17', topic: 'Philosophy & Ethics',        words: 'Virtue, Autonomy, Empiricism, Paradox, Conscience' },
-  { id: 18, title: 'Chapter 18', topic: 'History & Civilisation',     words: 'Empire, Revolution, Chronicle, Dynasty, Conquest' },
-  { id: 19, title: 'Chapter 19', topic: 'Religion & Belief',          words: 'Doctrine, Theology, Ritual, Creed, Devotion' },
-  { id: 20, title: 'Chapter 20', topic: 'Relationships & Society',    words: 'Empathy, Conflict, Allegiance, Reciprocity, Bonds' },
-  { id: 21, title: 'Chapter 21', topic: 'Work & Career',              words: 'Vocation, Productivity, Delegation, Hierarchy, Promotion' },
-  { id: 22, title: 'Chapter 22', topic: 'Language & Linguistics',     words: 'Syntax, Semantics, Morphology, Dialect, Phonology' },
-  { id: 23, title: 'Chapter 23', topic: 'Architecture & Design',      words: 'Structure, Blueprint, Facade, Renovation, Aesthetic' },
-  { id: 24, title: 'Chapter 24', topic: 'Space & Astronomy',          words: 'Nebula, Orbit, Gravity, Telescope, Constellation' },
-  { id: 25, title: 'Chapter 25', topic: 'Crime & Society',            words: 'Felony, Detention, Recidivism, Rehabilitation, Deterrence' },
-  { id: 26, title: 'Chapter 26', topic: 'Human Rights',               words: 'Equality, Liberty, Discrimination, Asylum, Advocacy' },
-  { id: 27, title: 'Chapter 27', topic: 'Energy & Resources',         words: 'Fossil, Turbine, Emission, Capacity, Infrastructure' },
-  { id: 28, title: 'Chapter 28', topic: 'Global Trade',               words: 'Tariff, Export, Import, Quota, Commodity' },
-  { id: 29, title: 'Chapter 29', topic: 'Digital World',              words: 'Encryption, Bandwidth, Interface, Software, Database' },
-  { id: 30, title: 'Chapter 30', topic: 'Animal Kingdom',             words: 'Predator, Nocturnal, Domesticate, Species, Vertebrate' },
-  { id: 31, title: 'Chapter 31', topic: 'Human Body & Biology',       words: 'Skeletal, Neuron, Cardiovascular, Hormone, Enzyme' },
-  { id: 32, title: 'Chapter 32', topic: 'Weather & Climate',          words: 'Precipitation, Humidity, Forecast, Drought, Monsoon' },
-  { id: 33, title: 'Chapter 33', topic: 'Mathematics & Logic',        words: 'Theorem, Variable, Probability, Ratio, Geometry' },
-  { id: 34, title: 'Chapter 34', topic: 'Urban Life & Cities',        words: 'Metropolis, Infrastructure, Congestion, Suburb, Zoning' },
-  { id: 35, title: 'Chapter 35', topic: 'Agriculture & Farming',      words: 'Cultivation, Irrigation, Harvest, Livestock, Pesticide' },
-  { id: 36, title: 'Chapter 36', topic: 'Music & Performing Arts',    words: 'Melody, Rhythm, Composition, Orchestra, Improvisation' },
-  { id: 37, title: 'Chapter 37', topic: 'Personal Development',       words: 'Resilience, Discipline, Ambition, Mindfulness, Growth' },
+  { id: 1,  title: 'Chapter 1',  topic: 'Work' },
+  { id: 2,  title: 'Chapter 2',  topic: 'Money' },
+  { id: 3,  title: 'Chapter 3',  topic: 'Crime' },
+  { id: 4,  title: 'Chapter 4',  topic: 'Health' },
+  { id: 5,  title: 'Chapter 5',  topic: 'Driving' },
+  { id: 6,  title: 'Chapter 6',  topic: 'Binomials and Trinomials' },
+  { id: 7,  title: 'Chapter 7',  topic: 'War and Peace' },
+  { id: 8,  title: 'Chapter 8',  topic: 'News' },
+  { id: 9,  title: 'Chapter 9',  topic: 'Quantity' },
+  { id: 10, title: 'Chapter 10', topic: 'Ideas' },
+  { id: 11, title: 'Chapter 11', topic: 'Ways Of Walking' },
+  { id: 12, title: 'Chapter 12', topic: 'Ways of Talking' },
+  { id: 13, title: 'Chapter 13', topic: 'Ways of Looking' },
+  { id: 14, title: 'Chapter 14', topic: 'Feelings' },
+  { id: 15, title: 'Chapter 15', topic: 'Negative Feelings' },
+  { id: 16, title: 'Chapter 16', topic: 'Positive Feelings' },
+  { id: 17, title: 'Chapter 17', topic: 'Cause and Effect' },
+  { id: 18, title: 'Chapter 18', topic: 'Difficulties and Problems' },
+  { id: 19, title: 'Chapter 19', topic: 'Compare and Contrast' },
+  { id: 20, title: 'Chapter 20', topic: 'Space and Time' },
+  { id: 21, title: 'Chapter 21', topic: 'Plans and Decisions' },
+  { id: 22, title: 'Chapter 22', topic: 'Appearance' },
+  { id: 23, title: 'Chapter 23', topic: 'Body' },
+  { id: 24, title: 'Chapter 24', topic: 'Life and Death' },
+  { id: 25, title: 'Chapter 25', topic: 'Clothes and Fashion' },
+  { id: 26, title: 'Chapter 26', topic: 'Food and Cooking' },
+  { id: 27, title: 'Chapter 27', topic: 'Weather and Climate' },
+  { id: 28, title: 'Chapter 28', topic: 'Animals and Plants' },
+  { id: 29, title: 'Chapter 29', topic: 'Adverb Collocations' },
+  { id: 30, title: 'Chapter 30', topic: 'Phrasal Verb Collocations' },
+  { id: 31, title: 'Chapter 31', topic: 'Secrets, Lies, and Conspiracies' },
+  { id: 32, title: 'Chapter 32', topic: 'Regulations and Authority' },
+  { id: 33, title: 'Chapter 33', topic: 'The Environment' },
+  { id: 34, title: 'Chapter 34', topic: 'Travel and Tourism' },
+  { id: 35, title: 'Chapter 35', topic: 'Shopping and Customer Service' },
+  { id: 36, title: 'Chapter 36', topic: 'Books' },
+  { id: 37, title: 'Chapter 37', topic: 'Physics and Chemistry' },
 ];
 
 function renderMVWChapters() {
   const grid = document.getElementById('mvw-chapters-grid');
-  if (!grid || grid.dataset.rendered === 'true') return;
+  if (!grid) return;
 
   grid.innerHTML = '';
 
@@ -289,7 +289,6 @@ function renderMVWChapters() {
     card.innerHTML = `
       <span class="module-number">${ch.title}</span>
       <h3>${ch.topic}</h3>
-      <p class="mvw-preview-words">${ch.words}</p>
     `;
     // Placeholder click — ready to expand later
     card.addEventListener('click', () => {
@@ -297,8 +296,6 @@ function renderMVWChapters() {
     });
     grid.appendChild(card);
   });
-
-  grid.dataset.rendered = 'true';
 }
 
 function renderLessonView(moduleId) {
