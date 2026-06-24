@@ -420,6 +420,41 @@ body.dark-mode .level-card.active-level:hover {
   color: var(--text-secondary);
 }
 
+/* ===== MASTER VOCABULARY WORKBOOK CARD ===== */
+.mvw-card-wrapper {
+  grid-column: 1 / -1; /* Full width across the grid */
+}
+
+.mvw-card {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: linear-gradient(135deg, var(--card-bg) 80%, rgba(245, 158, 11, 0.05) 100%);
+  max-width: 100%;
+}
+
+.mvw-card::after {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24) !important;
+}
+
+.mvw-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 36px rgba(245, 158, 11, 0.2) !important;
+  border-color: rgba(245, 158, 11, 0.6);
+}
+
+.mvw-icon {
+  font-size: 2.2rem !important;
+  color: #f59e0b !important;
+}
+
+/* Chapter card preview words */
+.mvw-preview-words {
+  font-size: 0.82rem !important;
+  color: var(--text-secondary);
+  font-style: italic;
+  letter-spacing: 0.01em;
+}
+}
+
 /* Modules View */
 .view-header {
   display: flex;

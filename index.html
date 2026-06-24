@@ -150,7 +150,41 @@
             </div>
           </div>
         </div>
+
+        <!-- Master Vocabulary Workbook Card -->
+        <div class="mvw-card-wrapper">
+          <div class="level-card mvw-card" id="mvw-home-card" onclick="navigateTo('mvw')">
+            <div class="level-header">
+              <span class="level-code mvw-icon">📖</span>
+              <span class="level-badge" style="background: rgba(251,191,36,0.15); color: #f59e0b;">Vocabulary</span>
+            </div>
+            <h3>Master Vocabulary Workbook</h3>
+            <p>A comprehensive workbook with 37 chapters of rich, advanced vocabulary exercises designed to build powerful, exam-ready word knowledge.</p>
+            <div class="level-status" style="color: #f59e0b;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="stroke: #f59e0b;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+              37 Chapters Active
+            </div>
+          </div>
+        </div>
+
       </section>
+    </div>
+
+    <!-- MVW Chapters View -->
+    <div id="mvw-view" class="view-container">
+      <div class="view-header">
+        <div>
+          <h2>📖 Master Vocabulary Workbook</h2>
+          <p>Select a chapter to explore its vocabulary exercises and content.</p>
+        </div>
+        <button class="back-btn" onclick="navigateTo('home')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          Back to Dashboard
+        </button>
+      </div>
+      <div id="mvw-chapters-grid" class="modules-grid">
+        <!-- Rendered dynamically by JavaScript -->
+      </div>
     </div>
 
     <!-- 2. Level Modules View -->
